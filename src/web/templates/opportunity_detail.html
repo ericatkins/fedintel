@@ -5,15 +5,19 @@
 <p class="sub">{{ o.agency or 'Federal' }} · {{ o.office or '—' }} · {{ o.notice_type or '—' }}
 {% if o.response_deadline %} · due {{ o.response_deadline.strftime('%b %d, %Y') }}{% endif %}</p>
 
-{% if d %}
-{% set rec = d.pursuit_recommendation or {} %}
-{% set inc = d.incumbent_analysis or {} %}
-{% set awards = d.last_10_relevant_awards or [] %}
+{% if decision %}
+{% set summ = decision.summary %}
+{% set inc = (d.incumbent_analysis if d else {}) or {} %}
 <div class="decision">
   <div class="cell verdict">
     <div class="k">Verdict</div>
-    <div class="v">{{ rec.recommendation or '—' }}</div>
-    <div class="conf">confidence {{ rec.confidence or '—' }}/100</div>
+    <div class="v">{{ summ.recommendation }}</div>
+    <div class="conf">confidence {{ summ.confidence }}/100 ({{ summ.confidence_band }})</div>
+  </div>
+  <div class="cell">
+    <div class="k">Deadline</div>
+    <div class="v">{% if days_left is not none %}{{ days_left }}d left{% else %}—{% endif %}</div>
+    <div class="conf">{% if o.response_deadline %}{{ o.response_deadline.strftime('%b %d, %Y') }}{% else %}no deadline posted{% endif %}</div>
   </div>
   <div class="cell">
     <div class="k">Comparable award estimate</div>
@@ -27,17 +31,55 @@
   </div>
   <div class="cell">
     <div class="k">Incumbent</div>
-    <div class="v">{{ inc.likely_incumbent_name or inc.incumbent_status | replace('_', ' ') | default('no known incumbent', true) }}</div>
+    <div class="v">{{ inc.likely_incumbent_name or (inc.incumbent_status | replace('_', ' ') if inc.incumbent_status else 'not assessed yet') }}</div>
     <div class="conf">{{ inc.confidence_band or '' }}</div>
   </div>
   <div class="cell">
     <div class="k">Top risk</div>
-    <div class="v vsm">{{ (rec.top_risks or ['—'])[0] }}</div>
+    <div class="v vsm">{{ (decision.top_risks or ['none identified yet'])[0] }}</div>
   </div>
   <div class="cell">
     <div class="k">Do next</div>
-    <div class="v vsm">{{ (rec.next_actions or ['Review the notice'])[0] }}</div>
+    <div class="v vsm">{{ decision.next_action }}</div>
   </div>
+  <div class="cell">
+    <div class="k">Dossier completeness</div>
+    <div class="v">{{ decision.completeness_pct }}%</div>
+    <div class="conf">{% if d %}generated {{ d.generated_at[:10] if d.generated_at else '' }}{% else %}enrichment pending{% endif %}</div>
+  </div>
+</div>
+
+<div class="panel stack-panel">
+  <h3>Capture decision stack — ten dimensions, separately assessed</h3>
+  <table class="stack">
+    <thead><tr><th>Dimension</th><th>Rating</th><th>Evidence</th><th>If it's a problem</th></tr></thead>
+    <tbody>
+    {% for dim in decision.dimensions %}
+      <tr>
+        <td>{{ dim.name }}<div class="conf">{{ dim.materiality }} materiality</div></td>
+        <td><span class="rating r-{{ dim.rating }}">{{ dim.rating }}</span>
+            <div class="conf">{{ dim.confidence }}/100</div></td>
+        <td class="ev">
+          {{ dim.evidence[0] }}
+          {% if dim.evidence | length > 1 or dim.unknowns %}
+          <details><summary>more</summary>
+            {% for e in dim.evidence[1:] %}<div>{{ e }}</div>{% endfor %}
+            {% if dim.unknowns %}<div class="conf">Unknown: {{ dim.unknowns | join('; ') }}</div>{% endif %}
+          </details>
+          {% endif %}
+        </td>
+        <td class="ev conf">{{ dim.mitigation or '' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="rationale">
+    {% for r in summ.rationale %}<div class="caveat">{{ r }}</div>{% endfor %}
+  </div>
+  <p class="conf">Each dimension is judged separately from stored evidence —
+  "unknown" means the data to judge is missing, which is never treated as a
+  negative finding. The verdict comes from ordered rules over these ratings,
+  not from a blended score.</p>
 </div>
 {% endif %}
 

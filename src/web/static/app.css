@@ -117,7 +117,17 @@ label{display:block;color:var(--dim);font-size:11px;margin:10px 0 3px;text-trans
 .chipx{background:none;border:none;color:var(--dim);cursor:pointer;padding:0 6px;font-size:13px}
 .chipx:hover{color:#f66}
 .w90x{width:160px}
-.decision{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.decision{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.rating{font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:10px;border:1px solid var(--line);white-space:nowrap}
+.r-strong{color:var(--green);border-color:var(--green)}
+.r-moderate{color:var(--accent);border-color:var(--accent)}
+.r-weak{color:var(--amber);border-color:var(--amber)}
+.r-blocked{color:var(--red);border-color:var(--red)}
+.r-unknown{color:var(--dim);border-style:dashed}
+.stack-panel{margin-bottom:14px}
+.stack td{vertical-align:top}
+.stack .ev{max-width:420px}
+.rationale{margin-top:8px}
 .decision .cell{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
 .decision .cell .k{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
 .decision .cell .v{font-size:14px;font-weight:700;margin-top:4px}

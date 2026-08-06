@@ -452,10 +452,27 @@ def opportunity_detail(opp_id: int,
             from ..documents.qualification import assess
             qualification = assess(requirements,
                                    store().get_profile(user["org_id"]) or {})
+    from datetime import date
+    from datetime import timezone as _tz
+
+    from ..intel.decision import build_decision_stack
+    days_left = None
+    if opp.get("response_deadline"):
+        rd = opp["response_deadline"]
+        rd = rd if getattr(rd, "tzinfo", None) else rd.replace(tzinfo=_tz.utc)
+        days_left = (rd.date() - date.today()).days
+    decision = build_decision_stack(
+        opp=opp,
+        match={"score": opp.get("score"), "reasons": opp.get("reasons") or []},
+        dossier=dossier, qualification=qualification, value_est=value_est,
+        documents=documents, days_left=days_left,
+        projects=store().list_projects(user["org_id"]),
+        weights=store().preference_weights(user["org_id"]))
     return render("opportunity_detail.html", user=user, o=opp, d=dossier,
                   lineage=lineage, statuses=TRACK_STATUSES, csrf=csrf_for(session),
                   value_est=value_est, delegation=delegation, documents=documents,
-                  requirements=requirements, qualification=qualification)
+                  requirements=requirements, qualification=qualification,
+                  decision=decision, days_left=days_left)
 
 
 @app.post("/app/opportunities/{opp_id}/status")

@@ -164,6 +164,93 @@ class PgStore:
                 cur.execute("insert into company_profiles (organization_id, profile) values (%s,%s)",
                             (org_id, json.dumps(profile)))
 
+    # ---- org-scoped: company evidence graph (private tenant data) ----
+    _PROJECT_COLS = ("id", "title", "customer_agency", "customer_office",
+                     "contract_identifier", "role", "naics", "psc",
+                     "period_start", "period_end", "value_total", "scope",
+                     "technologies", "outcomes", "partners", "source_note")
+
+    def list_projects(self, org_id):
+        with self.cursor() as cur:
+            cur.execute(
+                """select id, title, customer_agency, customer_office,
+                          contract_identifier, role, naics, psc, period_start,
+                          period_end, value_total, scope, technologies,
+                          outcomes, partners, source_note
+                   from company_projects where organization_id=%s
+                   order by coalesce(period_end, period_start) desc nulls last,
+                            id desc
+                   limit 200""", (org_id,))
+            return [dict(zip(self._PROJECT_COLS, r, strict=True))
+                    for r in cur.fetchall()]
+
+    def add_project(self, org_id, fields: dict):
+        with self.cursor() as cur:
+            cur.execute(
+                """insert into company_projects
+                     (organization_id, title, customer_agency, customer_office,
+                      contract_identifier, role, naics, psc, period_start,
+                      period_end, value_total, scope, technologies, outcomes,
+                      partners, source_note)
+                   values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                   returning id""",
+                (org_id, fields.get("title"), fields.get("customer_agency"),
+                 fields.get("customer_office"), fields.get("contract_identifier"),
+                 fields.get("role"), fields.get("naics"), fields.get("psc"),
+                 fields.get("period_start") or None,
+                 fields.get("period_end") or None,
+                 fields.get("value_total") or None, fields.get("scope"),
+                 fields.get("technologies"), fields.get("outcomes"),
+                 fields.get("partners"), fields.get("source_note")))
+            return cur.fetchone()[0]
+
+    def delete_project(self, org_id, project_id):
+        with self.cursor() as cur:
+            cur.execute("delete from company_projects "
+                        "where organization_id=%s and id=%s",
+                        (org_id, project_id))
+
+    # ---- org-scoped: capture tasks ----
+    def list_capture_tasks(self, org_id, opportunity_id=None, include_done=False):
+        sql = """select t.id, t.opportunity_id, t.title, t.detail, t.owner,
+                        t.due_date, t.status, t.source, o.title
+                 from capture_tasks t
+                 left join opportunities o on o.id = t.opportunity_id
+                 where t.organization_id=%s"""
+        params: list = [org_id]
+        if opportunity_id is not None:
+            sql += " and t.opportunity_id=%s"
+            params.append(opportunity_id)
+        if not include_done:
+            sql += " and t.status='open'"
+        sql += " order by t.due_date asc nulls last, t.id desc limit 300"
+        with self.cursor() as cur:
+            cur.execute(sql, params)
+            cols = ("id", "opportunity_id", "title", "detail", "owner",
+                    "due_date", "status", "source", "opportunity_title")
+            return [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
+
+    def add_capture_task(self, org_id, title, detail=None, opportunity_id=None,
+                         user_id=None, owner=None, due_date=None,
+                         source="manual"):
+        with self.cursor() as cur:
+            cur.execute(
+                """insert into capture_tasks
+                     (organization_id, opportunity_id, user_id, title, detail,
+                      owner, due_date, source)
+                   values (%s,%s,%s,%s,%s,%s,%s,%s) returning id""",
+                (org_id, opportunity_id, user_id, title, detail, owner,
+                 due_date or None, source))
+            return cur.fetchone()[0]
+
+    def set_capture_task_status(self, org_id, task_id, status):
+        if status not in ("open", "done", "dropped"):
+            raise ValueError("invalid task status")
+        with self.cursor() as cur:
+            cur.execute("""update capture_tasks set status=%s, updated_at=now()
+                           where organization_id=%s and id=%s""",
+                        (status, org_id, task_id))
+
     # ---- org-scoped: tracking / feedback ----
     def set_tracked(self, org_id, opportunity_id, status, user_id=None):
         if status not in TRACK_STATUSES:
@@ -897,6 +984,7 @@ class MemoryStore:
                     "delivery_stats": []}
         self.market_rows = []
         self.admin_user_ids = set()
+        self.projects, self.capture_tasks = {}, {}
         self._id = 0
 
     def _next(self):
@@ -938,6 +1026,58 @@ class MemoryStore:
 
     def upsert_profile(self, org_id, profile):
         self.profiles[org_id] = profile
+
+    def list_projects(self, org_id):
+        return [dict(p) for p in self.projects.values()
+                if p["_org_id"] == org_id]
+
+    def add_project(self, org_id, fields: dict):
+        pid = self._next()
+        row = {"id": pid, "_org_id": org_id}
+        for k in ("title", "customer_agency", "customer_office",
+                  "contract_identifier", "role", "naics", "psc", "period_start",
+                  "period_end", "value_total", "scope", "technologies",
+                  "outcomes", "partners", "source_note"):
+            row[k] = fields.get(k) or None
+        self.projects[pid] = row
+        return pid
+
+    def delete_project(self, org_id, project_id):
+        p = self.projects.get(project_id)
+        if p and p["_org_id"] == org_id:
+            del self.projects[project_id]
+
+    def list_capture_tasks(self, org_id, opportunity_id=None, include_done=False):
+        out = []
+        for t in self.capture_tasks.values():
+            if t["_org_id"] != org_id:
+                continue
+            if opportunity_id is not None and t["opportunity_id"] != opportunity_id:
+                continue
+            if not include_done and t["status"] != "open":
+                continue
+            row = dict(t)
+            row["opportunity_title"] = self.opportunities.get(
+                t["opportunity_id"], {}).get("title")
+            out.append(row)
+        return out
+
+    def add_capture_task(self, org_id, title, detail=None, opportunity_id=None,
+                         user_id=None, owner=None, due_date=None,
+                         source="manual"):
+        tid = self._next()
+        self.capture_tasks[tid] = {
+            "id": tid, "_org_id": org_id, "opportunity_id": opportunity_id,
+            "title": title, "detail": detail, "owner": owner,
+            "due_date": due_date or None, "status": "open", "source": source}
+        return tid
+
+    def set_capture_task_status(self, org_id, task_id, status):
+        if status not in ("open", "done", "dropped"):
+            raise ValueError("invalid task status")
+        t = self.capture_tasks.get(task_id)
+        if t and t["_org_id"] == org_id:
+            t["status"] = status
 
     def set_tracked(self, org_id, opportunity_id, status, user_id=None):
         if status not in TRACK_STATUSES:
