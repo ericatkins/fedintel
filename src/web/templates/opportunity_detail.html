@@ -180,6 +180,32 @@
       </ul>
     </div>
   {% endif %}
+  {% if history %}
+    <div class="panel timeline-panel">
+      <h3>Amendment &amp; change history</h3>
+      <ul class="evlist">
+      {% for e in history if e.event_type != 'tracked_opportunity_changed' %}
+        <li>
+          {% if e.event_type == 'stage_transition' %}
+            <strong>Stage change:</strong> {{ e.detail.from }} → {{ e.detail.to }}
+          {% elif e.detail.field %}
+            <strong>{{ e.detail.field | replace('_', ' ') }}</strong> changed:
+            <span class="quote">{{ e.detail.old or '—' }}</span> →
+            <span class="quote">{{ e.detail.new or '—' }}</span>
+          {% else %}
+            <strong>{{ e.event_type | replace('_', ' ') }}</strong>
+            {% if e.detail.note %}<span class="conf">{{ e.detail.note }}</span>{% endif %}
+          {% endif %}
+          <span class="conf">{{ e.created_at }}</span>
+        </li>
+      {% endfor %}
+      </ul>
+      <p class="conf">Changes are detected at ingest: a content-hash mismatch
+      triggers a field-level diff of the stored notice against the new version.
+      Deadline and set-aside changes are the ones that most often invalidate a
+      bid plan — reread the amended documents when either moves.</p>
+    </div>
+  {% endif %}
   {% if delegation %}
     <div class="panel timeline-panel">
       <h3>Congressional delegation — place of performance</h3>
@@ -389,6 +415,27 @@
     <div class="panel"><h3>Intelligence</h3>
       <p>Dossier generation pending — this opportunity has been queued for enrichment.
       Basic details are on the left; check back after the next enrichment run.</p></div>
+  {% endif %}
+  {% if ledger %}
+    <div class="panel section mt12" id="sources">
+      <h3>Evidence &amp; source ledger</h3>
+      <table><thead><tr><th>Source</th><th>Identifier</th><th>Retrieved</th>
+        <th>Used by</th><th>Limitations</th></tr></thead>
+      <tbody>
+      {% for s in ledger %}
+        <tr><td>{{ s.source_title }}<div class="conf">{{ s.organization }}</div></td>
+        <td class="ev">{% set surl = safe_sam_url(s.url, None) %}
+          {% if surl %}<a href="{{ surl }}">{{ s.identifier or 'link' }} ↗</a>
+          {% else %}{{ s.identifier or '—' }}{% endif %}</td>
+        <td class="conf">{{ s.retrieved or '—' }}</td>
+        <td class="conf">{{ s.used_by | join('; ') }}</td>
+        <td class="conf">{{ s.limitations or '' }}</td></tr>
+      {% endfor %}
+      </tbody></table>
+      <p class="conf">Every material conclusion above traces to one of these
+      sources. If a source is stale or missing here, treat the dependent
+      section with suspicion — that is the point of this table.</p>
+    </div>
   {% endif %}
   </div>
 

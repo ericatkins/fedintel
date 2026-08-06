@@ -387,7 +387,8 @@ class PgStore:
                 """select o.id, o.title, o.agency, o.office, o.office_location, o.notice_type,
                           o.naics, o.set_aside, o.posted_date, o.response_deadline,
                           o.place_of_performance, o.description_text, o.url, o.source_notice_id,
-                          o.solicitation_number, o.enrichment_status, c.score, c.category,
+                          o.solicitation_number, o.enrichment_status, o.first_seen_at,
+                          o.last_seen_at, c.score, c.category,
                           c.reasons, c.components, c.recommended_action, t.status
                    from opportunities o
                    left join classifications c on c.opportunity_id = o.id
@@ -400,9 +401,19 @@ class PgStore:
         cols = ("id", "title", "agency", "office", "office_location", "notice_type", "naics",
                 "set_aside", "posted_date", "response_deadline", "place_of_performance",
                 "description_text", "url", "source_notice_id", "solicitation_number",
-                "enrichment_status", "score", "category", "reasons", "components",
+                "enrichment_status", "first_seen_at", "last_seen_at", "score",
+                "category", "reasons", "components",
                 "recommended_action", "user_status")
         return dict(zip(cols, row, strict=True))
+
+    def change_history_for_opportunity(self, opp_id, limit=50):
+        with self.cursor() as cur:
+            cur.execute(
+                """select event_type, detail, created_at from change_events
+                   where opportunity_id=%s and event_type != 'new'
+                   order by created_at desc limit %s""", (opp_id, limit))
+            return [{"event_type": r[0], "detail": r[1], "created_at": r[2]}
+                    for r in cur.fetchall()]
 
     def get_dossier(self, opp_id):
         from .. import db_intel
@@ -1026,6 +1037,10 @@ class MemoryStore:
 
     def upsert_profile(self, org_id, profile):
         self.profiles[org_id] = profile
+
+    def change_history_for_opportunity(self, opp_id, limit=50):
+        return [e for e in getattr(self, "opp_change_events", [])
+                if e.get("opportunity_id") == opp_id][:limit]
 
     def list_projects(self, org_id):
         return [dict(p) for p in self.projects.values()

@@ -573,12 +573,15 @@ def opportunity_detail(opp_id: int,
         projects=projects,
         weights=store().preference_weights(user["org_id"]))
     tasks = store().list_capture_tasks(user["org_id"], opportunity_id=opp_id)
+    from ..intel.ledger import build_evidence_ledger
+    ledger = build_evidence_ledger(opp, dossier, documents, delegation)
+    history = store().change_history_for_opportunity(opp_id)
     return render("opportunity_detail.html", user=user, o=opp, d=dossier,
                   lineage=lineage, statuses=TRACK_STATUSES, csrf=csrf_for(session),
                   value_est=value_est, delegation=delegation, documents=documents,
                   requirements=requirements, qualification=qualification,
                   proof=proof, decision=decision, days_left=days_left,
-                  tasks=tasks)
+                  tasks=tasks, ledger=ledger, history=history)
 
 
 @app.post("/app/opportunities/{opp_id}/status")
