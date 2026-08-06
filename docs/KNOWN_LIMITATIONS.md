@@ -1,0 +1,58 @@
+# Known Limitations Register
+
+Honest inventory of what the product does **not** do yet, and why. A roadmap
+presented as shipped is its own kind of lie.
+
+## Intelligence
+
+- **Contract family links are mostly inferred.** Confirmed (identifier-match)
+  links exist only when SAM/USAspending records share solicitation or contract
+  numbers; most families rest on ≥55-similarity links, and the UI labels every
+  such member `inferred`. Modifications and option exercises are not yet
+  ingested as distinct actions (USAspending transaction feed — planned), so
+  the recompete clock reads recorded period ends only.
+- **Buyer DNA lacks cycle-time metrics** (forecast→RFI→solicitation→award,
+  amendment/extension/cancellation/protest rates). These need solicitation-to-
+  award joins and GAO protest ingestion that aren't built; the shipped metrics
+  are the ones public award data supports cleanly.
+- **No procurement-forecast ingestion yet** (Acquisition.gov directory, agency
+  APFS). This is the highest-value missing demand-radar source; adapters need
+  per-agency research because formats differ.
+- **Funding ladder is account-level.** The four exclusive funding labels are
+  enforced, but President's Budget lines, appropriations bill status, and NDAA
+  section links are not ingested; the dossier never claims more than the data
+  supports.
+- **No competitor/teaming panel beyond the vendor landscape.** Vendor
+  concentration and repeat-vendor reads exist; ranked likely-competitor and
+  partner-gap recommendations are not yet built.
+- **Incumbent vulnerability signals are a starter set** (bridge, set-aside
+  change, requirement-change language, obligation rate). Protest history, IG/
+  GAO findings, and exclusions are not yet ingested.
+- **Proof mapping is token-based.** It surfaces candidate projects for a
+  past-performance narrative and labels partial overlap as weak; it does not
+  do semantic matching, and says so on the page.
+
+## Product
+
+- **Grants remain unbuilt** as a vertical (Grants.gov/Assistance Listings
+  adapters not present). Kept deliberately separate rather than shoehorned
+  into contract logic.
+- **OCR for scanned PDFs** is still missing; scanned attachments show
+  `unsupported`/`failed` extraction status and are flagged in the evidence
+  ledger.
+- **Amendment intelligence covers notice fields**, not document-version
+  diffing (added/removed requirement text between attachment versions).
+- **No Stripe billing** — plans and server-side entitlements are enforced;
+  payment collection is absent.
+- **Win probability is intentionally absent** until real outcomes exist to
+  calibrate it (the decision stack is the honest substitute).
+- **Demo data**: `scripts/seed_demo.py` exercises every dossier section with
+  realistic shapes, but golden-set evaluation against live SAM.gov records
+  requires a `SAM_API_KEY` and has not been run inside this environment.
+
+## Operational
+
+- Dossiers regenerate wholesale (no per-section freshness yet); the strip's
+  completeness % and generated-at date are the freshness signals.
+- MemoryStore mirrors PgStore for tests; a handful of newer read paths
+  (change history) return simplified shapes in memory.

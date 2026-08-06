@@ -243,3 +243,33 @@ ROADMAP (reviewer sprints 2-4, deliberate deferrals): contracting-officer extrac
   logs, and no browser ever holding broad DB credentials.
 - A digest counts as sent only when the provider confirms (sent_at). Failed
   sends persist with error state and are retried on the next cron run.
+
+## Capture intelligence release (Aug 2026)
+
+Shipped on branch `claude/fedintel-product-dev-vvdzpf`, migration 011:
+
+- **Capture Decision Stack** (`src/intel/decision.py`): ten separately
+  assessed dimensions replace reliance on the single match score. Per-org,
+  computed at read time; `unknown` is never a negative; verdict from ordered
+  rules (prime / prime with partner / sub / shape / track / conditional /
+  no-bid / insufficient evidence).
+- **Contract family + recompete clock + incumbent vulnerability**
+  (`src/intel/contract_family.py`): confirmed vs inferred members, bridge
+  detection, expiration estimate with stated assumptions, public-signal-only
+  vulnerability vocabulary.
+- **Buyer DNA** (`src/intel/buyer_dna.py`): office behavior vs peer offices
+  (same subtier + NAICS, own awards excluded). Labels only on ≥15pp deltas
+  with ≥8 awards per side.
+- **Company evidence library** (`company_projects`) + **requirement-to-proof**
+  (`src/intel/proof.py`): strong/weak/stale/missing statuses; keyword overlap
+  is never presented as demonstrated past performance.
+- **Capture tasks** (`capture_tasks`): recommended next action → one-click
+  task; open-task table on the watchlist.
+- **Amendment history panel** (surfaces existing field-level change_events)
+  and **evidence ledger** (`src/intel/ledger.py`).
+- Dossier v2 persists `contract_family_json`, `buyer_dna_json`.
+- Docs: OPPORTUNITY_DOSSIER, BUYER_DNA, CONTRACT_LINEAGE,
+  COMPANY_EVIDENCE_GRAPH, KNOWN_LIMITATIONS.
+- Next highest-value work, in order: procurement-forecast ingestion (demand
+  radar) · competitor/teaming panel · document-version diffing + OCR ·
+  funding ladder deepening (budget lines, appropriations status) · grants MVP.

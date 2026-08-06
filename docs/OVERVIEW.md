@@ -104,7 +104,7 @@ and **every row must carry a source** or it is rejected.
 
 ### Derived intelligence
 
-Computed by Fedintel and stored across 42 tables — not fetched from anywhere:
+Computed by Fedintel and stored across 44 tables — not fetched from anywhere:
 
 Per-organization match scores · buyer-office profiles and behavior labels ·
 vendor profiles (obligations, top agencies/NAICS/offices) · office market stats
@@ -116,7 +116,12 @@ competition concentration · comparable-award value estimates (median + IQR,
 outliers excluded) · opportunity lifecycle lineage and stage transitions ·
 extracted document requirements (42 rules, 11 types) · bid-qualification
 verdicts · computed partisan lean and seat outlook · learned organization
-preference weights · job-run telemetry and audit log.
+preference weights · job-run telemetry and audit log · **capture decision
+stacks** (ten separately-assessed dimensions per org per opportunity) ·
+**contract families** with recompete clocks and public-signal incumbent
+vulnerability · **Buyer DNA** (peer-normalized office behavior labels) ·
+**requirement-to-proof mappings** against each org's private project library ·
+per-dossier evidence ledgers.
 
 ---
 
@@ -128,8 +133,12 @@ preference weights · job-run telemetry and audit log.
 - Filters (keyword, score, notice type), **saved views** (plan-limited), CSV
   export hardened against spreadsheet formula injection
 - **Opportunity detail** — the most important page: a decision strip (verdict,
-  comparable-award estimate, likely incumbent, top risk, next action), the
-  full intelligence dossier, lifecycle timeline, and evidence drilldowns
+  deadline, comparable-award estimate, likely incumbent, top risk, next
+  action, completeness), the **Capture Decision Stack** (ten separately
+  assessed dimensions — see `docs/OPPORTUNITY_DOSSIER.md`), contract family
+  timeline with recompete clock and incumbent vulnerability, Buyer DNA,
+  amendment history, the full intelligence dossier, a per-dossier evidence
+  ledger, and evidence drilldowns
 - **Watchlist** with seven capture statuses: watching → researching → pursuing
   → submitted → won / lost / ignored
 - Printable intelligence report (11–13 sections, depending on available intel)
@@ -215,15 +224,15 @@ frontend framework.
 | Web | FastAPI + Uvicorn | Backend-for-frontend; the browser never touches the database |
 | Templates | Jinja2, autoescape always on | Server-rendered HTML; no build step |
 | Frontend | Vanilla JS + CSS (~3 files) | No React/bundler; the command palette and keyboard nav are a few hundred lines |
-| Database | PostgreSQL (Supabase-compatible) | 42 tables, 10 ordered migrations, check constraints in the schema |
+| Database | PostgreSQL (Supabase-compatible) | 44 tables, 11 ordered migrations, check constraints in the schema |
 | DB access | `psycopg2` + `ThreadedConnectionPool` | Pooled, one transaction per operation; static/parameterized SQL only |
 | Documents | `pypdf` | Pure-Python, parses structure only, never executes content |
 | Email | Resend | With idempotency keys so retries can't double-send |
 | Hosting | Railway (Docker), one image | Web service + 5 cron workers |
 | CI | GitHub Actions | ruff, pytest, bandit, pip-audit, secret guard, and a real Postgres integration job |
 
-**Scale of the codebase:** ~8,300 lines of application code, ~3,100 lines of
-tests (181 unit + 23 Postgres integration), 26 templates, 5 runtime dependencies.
+**Scale of the codebase:** ~10,200 lines of application code, ~3,700 lines of
+tests (223 unit + 25 Postgres integration), 26 templates, 5 runtime dependencies.
 
 ### Security posture
 
@@ -258,7 +267,7 @@ tests (181 unit + 23 Postgres integration), 26 templates, 5 runtime dependencies
                                    │ pooled, transactional
                     ┌──────────────▼──────────────┐
                     │   PostgreSQL (Supabase)     │
-                    │   42 tables, 10 migrations  │
+                    │   44 tables, 11 migrations  │
                     └──────────────▲──────────────┘
                                    │
         ┌──────────────────────────┴───────────────────────────┐
@@ -355,7 +364,7 @@ db/
 deploy/railway/      7 service configs (1 web + 6 cron)
 docs/                DEPLOYMENT · PUBLIC_BETA_CHECKLIST · DOCUMENT_INTEL ·
                      DELEGATION_INTEL · DISTRICT_INTEL · this file
-tests/               181 unit tests + tests/integration (23, real Postgres)
+tests/               223 unit tests + tests/integration (25, real Postgres)
 ```
 
 ## Running it
@@ -375,10 +384,15 @@ inviting real users.
 
 ## What is deliberately not built yet
 
-Named honestly, because a roadmap presented as shipped is its own kind of lie:
+Named honestly, because a roadmap presented as shipped is its own kind of lie
+(full register: `docs/KNOWN_LIMITATIONS.md`):
 
-OCR for scanned PDFs · amendment diffing · contracting-officer extraction ·
-Stripe billing (entitlement flags are in place and enforced; only payment
-collection is missing) · Sentry · state and local opportunity sources
-(Bonfire/BidNet) · agency subtier splits (FBI within DOJ) · vertical packs for
-non-technical industries · grounded AI summaries.
+OCR for scanned PDFs · document-version diffing (notice-field amendment
+history IS built) · contracting-officer extraction · procurement-forecast
+ingestion · protest/IG/GAO signal ingestion · competitor & teaming
+recommendation panel · grants vertical · Stripe billing (entitlement flags are
+in place and enforced; only payment collection is missing) · Sentry · state
+and local opportunity sources (Bonfire/BidNet) · agency subtier splits (FBI
+within DOJ) · vertical packs for non-technical industries · grounded AI
+summaries · win probability (deliberately withheld until outcomes exist to
+calibrate it).
