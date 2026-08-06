@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Fedintel{% endblock %}</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="{% block bodyclass %}app{% endblock %}">
+{% block shell %}
+<div class="shell">
+  <nav class="rail">
+    <div class="brand">Fed<span>intel</span></div>
+    <a href="/app" data-nav accesskey="h">Home</a>
+    <a href="/app/opportunities" data-nav accesskey="o">Opportunities</a>
+    <a href="/app/watchlist" data-nav accesskey="w">Watchlist</a>
+    <a href="/app/agencies" data-nav accesskey="a">Agencies</a>
+    <a href="/app/vendors" data-nav accesskey="v">Vendors</a>
+    <a href="/app/market" data-nav accesskey="m">Market Intel</a>
+    <a href="/app/districts" data-nav accesskey="d">Districts</a>
+    <a href="/app/reports" data-nav accesskey="r">Reports</a>
+    <a href="/app/alerts" data-nav>Alerts</a>
+    <a href="/app/profile" data-nav>Company Profile</a>
+    <a href="/app/account" data-nav>Account</a>
+    {% if user and user.is_admin %}<a href="/app/admin" data-nav>Admin</a>{% endif %}
+    <div class="rail-foot">
+      <div class="who">{{ user.email if user else "" }}</div>
+      <a href="/logout">Log out</a>
+      <div class="hint">Ctrl+K command bar · j/k navigate</div>
+    </div>
+  </nav>
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<div id="palette" class="palette hidden" role="dialog" aria-label="Command bar">
+  <input id="palette-input" type="text" placeholder="Type a command… (opportunities, watchlist, score>80, sources sought, closing soon)" autocomplete="off">
+  <ul id="palette-list"></ul>
+</div>
+<script src="/static/app.js"></script>
+{% endblock %}
+</body>
+</html>

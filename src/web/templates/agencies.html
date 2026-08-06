@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Agencies{% endblock %}
+{% block content %}
+<h1>Agency &amp; buyer-office intelligence</h1>
+<p class="sub">Buying offices observed in opportunities and award history, ranked by
+materialized obligations. Data comes from stored intelligence tables — run the weekly
+materialization jobs to populate.</p>
+<table class="kb">
+  <thead><tr><th>Office</th><th>Subtier</th><th>Department</th><th>Obligations</th>
+  <th>Awards</th><th>Latest FY</th><th>ID conf.</th></tr></thead>
+  <tbody>
+  {% for a in rows %}
+    <tr>
+      <td><a data-row-link href="/app/agencies/{{ a.id }}">{{ a.office or '—' }}</a></td>
+      <td>{{ a.subtier or '—' }}</td>
+      <td>{{ a.department or '—' }}</td>
+      <td>{{ '${:,.0f}'.format(a.obligations) if a.obligations else '—' }}</td>
+      <td>{{ a.awards or 0 }}</td>
+      <td>{{ a.latest_fy or '—' }}</td>
+      <td><span class="conf">{{ a.confidence }}/100</span></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7" class="conf">No buyer offices yet — run
+    <code>python -m src.enrich</code> and the materialization jobs.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

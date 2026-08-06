@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — {{ m.full_name }}{% endblock %}
+{% block content %}
+<h1>{{ m.full_name }}</h1>
+<p class="sub">{{ 'Senator' if m.chamber == 'sen' else 'Representative' }}
+ ({{ m.party or '—' }}–{{ m.state }}{% if m.chamber == 'rep' %}-{{ m.district if m.district else 'AL' }}{% endif %})
+{% if m.state_rank %} · {{ m.state_rank }} senator{% endif %}
+ · data as of {{ m.updated_at.strftime('%b %d, %Y') if m.updated_at else '—' }}</p>
+
+<div class="cards">
+  <div class="card"><div class="num">{{ m.phone or '—' }}</div><div class="lbl">DC office</div></div>
+  <div class="card"><div class="num">{{ m.committees | length }}</div><div class="lbl">Committee seats</div></div>
+  <div class="card"><div class="num">{{ m.staff | length }}</div><div class="lbl">Staff on file</div></div>
+</div>
+
+<div class="panelgrid cols3 mt14">
+  <div class="panel">
+    <h3>Committee assignments</h3>
+    <ul class="evlist">
+    {% for c in m.committees %}
+      <li>{{ c.name }}{% if c.title %} <span class="accent">({{ c.title }})</span>{% endif %}</li>
+    {% else %}<li class="conf">None on record.</li>{% endfor %}
+    </ul>
+    {% if m.office %}<p class="conf mt12">{{ m.office }}</p>{% endif %}
+    {% if m.website %}<p class="conf"><a href="{{ m.website }}" rel="noopener noreferrer">Official website</a></p>{% endif %}
+    {% if m.chamber == 'rep' %}<p class="conf"><a href="/app/districts/{{ m.state }}/{{ m.district or 0 }}">District money &amp; electoral context →</a></p>{% endif %}
+  </div>
+
+  <div class="panel">
+    <h3>Staff on file</h3>
+    {% if m.staff %}
+    <ul class="evlist">
+    {% for s in m.staff %}
+      <li>{{ s.name }}{% if s.title %} — {{ s.title }}{% endif %}
+        <span class="conf">({{ s.source }}{% if s.source_date %}, {{ s.source_date }}{% endif %})</span></li>
+    {% endfor %}
+    </ul>
+    {% else %}
+    <p class="conf">No staff records imported. There is no free machine-readable
+    staff directory — import a sourced roster with
+    <code>python -m src.enrich --import-staff roster.csv</code>
+    (House Statement of Disbursements and commercial directories are the usual
+    sources). Until then, ask the office by ROLE:</p>
+    {% endif %}
+    <h3 class="mt12">Who to ask for</h3>
+    <ul class="evlist">
+    {% for r in playbook %}
+      <li><strong>{{ r.ask_for }}</strong> <span class="conf">— {{ r.when }}</span></li>
+    {% endfor %}
+    </ul>
+  </div>
+
+  <div class="panel">
+    <h3>Campaign funding context (FEC)</h3>
+    {% if m.funding %}
+    <table>
+      <thead><tr><th>Cycle</th><th>Contributor</th><th>Total</th><th>Basis</th></tr></thead>
+      <tbody>
+      {% for f in m.funding %}
+        <tr><td>{{ f.cycle }}</td><td>{{ f.contributor_name }}</td>
+        <td>{{ '${:,.0f}'.format(f.total) }}</td>
+        <td class="conf">{{ funding_label(f.kind) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="conf">No funding aggregates loaded — run
+    <code>python -m src.enrich --refresh-legislator-funding</code>
+    (uses the public FEC API; set FEC_API_KEY).</p>
+    {% endif %}
+    <p class="conf mt12">Corporations cannot contribute to federal candidates.
+    "Employer" rows aggregate individual contributions by the employer those
+    donors reported to the FEC; PAC rows are committee receipts.</p>
+  </div>
+</div>
+
+<div class="panel mt14">
+  <h3>Legislative calendar tie-ins</h3>
+  <ul class="evlist">
+  {% for w in windows %}
+    <li><strong>{{ w.window }}</strong> <span class="conf">({{ w.timing }})</span>
+      — {{ w.use }}</li>
+  {% endfor %}
+  </ul>
+</div>
+
+<div class="panel mt14">
+  <h3>Engagement guardrails</h3>
+  <p class="conf">{{ compliance }}</p>
+</div>
+{% endblock %}

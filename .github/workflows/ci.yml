@@ -1,0 +1,62 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  test-and-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Guard against committed secrets
+        run: |
+          if git ls-files | grep -x '.env'; then
+            echo '::error::.env is committed — remove it and rotate all keys'; exit 1
+          fi
+          grep -q '^\.env$' .gitignore || { echo '::error::.env missing from .gitignore'; exit 1; }
+
+      - name: Compile
+        run: python -m compileall src
+
+      - name: Lint (ruff, incl. flake8-bandit rules)
+        run: ruff check .
+
+      - name: Tests
+        run: pytest -q
+
+      - name: Security scan (bandit)
+        # Fails on ANY finding. Suppressions must be inline (#nosec BXXX) with a
+        # written justification in the code — see SECURITY.md policy.
+        run: bandit -r src -q
+
+      - name: Dependency vulnerability scan (pip-audit)
+        run: pip-audit -r requirements.txt
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: fedintel_test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: fedintel_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fedintel_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt -r requirements-api.txt -r requirements-dev.txt
+      - name: Postgres integration tests
+        env:
+          TEST_DATABASE_URL: postgres://fedintel_test:test@127.0.0.1:5432/fedintel_test
+        run: python -m pytest tests/integration -q

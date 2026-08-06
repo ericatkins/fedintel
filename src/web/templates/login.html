@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block bodyclass %}public{% endblock %}
+{% block shell %}
+<div class="auth">
+  <div class="brand">Fed<span>intel</span></div>
+  <h1>Log in</h1>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="/login">
+    <label>Email</label><input name="email" type="email" required class="w100">
+    <label>Password</label><input name="password" type="password" required class="w100">
+    <div class="mt16"><button type="submit" class="w100">Log in</button></div>
+  </form>
+  <p class="conf mt14">New here? <a href="/signup">Create an account</a>
+ · <a href="/forgot">Forgot password?</a></p>
+</div>
+{% endblock %}

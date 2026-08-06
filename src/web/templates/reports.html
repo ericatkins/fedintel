@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Reports{% endblock %}
+{% block content %}
+<h1>Reports</h1>
+<p class="sub">All reports generate from stored intelligence — no live external calls.
+Use your browser's print dialog for PDF.</p>
+
+<h2>Daily opportunity brief — {{ today.strftime('%B %d, %Y') }}</h2>
+<table class="kb">
+  <thead><tr><th>Score</th><th>Title</th><th>Agency</th><th>Type</th><th>Due</th><th>Dossier</th></tr></thead>
+  <tbody>
+  {% for o in top %}
+    <tr>
+      <td><span class="score {{ 's-high' if o.score >= 80 else 's-mid' }}">{{ o.score }}</span></td>
+      <td><a data-row-link href="/app/opportunities/{{ o.id }}">{{ o.title }}</a></td>
+      <td>{{ o.agency or '—' }}</td>
+      <td>{{ o.notice_type or '—' }}</td>
+      <td>{{ o.response_deadline.strftime('%b %d') if o.response_deadline else '—' }}</td>
+      <td><a href="/app/report/{{ o.id }}">Intelligence report →</a></td>
+    </tr>
+  {% else %}<tr><td colspan="6" class="conf">No high-match opportunities today.</td></tr>{% endfor %}
+  </tbody>
+</table>
+
+<h2>Pursuit pipeline report</h2>
+<div class="cards">
+  {% for status, items in pipeline.items() %}
+  <div class="card"><div class="num">{{ items | length }}</div><div class="lbl">{{ status }}</div></div>
+  {% endfor %}
+</div>
+{% for status, items in pipeline.items() if items %}
+<h2>{{ status }}</h2>
+<table>
+  <thead><tr><th>Title</th><th>Agency</th><th>Due</th></tr></thead>
+  <tbody>{% for t in items %}
+  <tr><td><a href="/app/opportunities/{{ t.opportunity_id }}">{{ t.title }}</a></td>
+  <td>{{ t.agency or '—' }}</td>
+  <td>{{ t.response_deadline.strftime('%b %d, %Y') if t.response_deadline else '—' }}</td></tr>
+  {% endfor %}</tbody>
+</table>
+{% endfor %}
+<p class="mt14">
+  <a class="btn btn-solid" href="/app/opportunities.csv">Export opportunities CSV</a>
+</p>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Vendors{% endblock %}
+{% block content %}
+<h1>Vendor intelligence</h1>
+<p class="sub">Materialized from public award data. Useful for incumbent research,
+teaming candidates, and competitor scans.</p>
+<form class="inline" method="get" action="/app/vendors">
+  <input type="text" name="q" value="{{ q }}" placeholder="vendor name">
+  <button type="submit">Search</button>
+</form>
+<table class="kb">
+  <thead><tr><th>Vendor</th><th>UEI</th><th>Obligations</th><th>Awards</th>
+  <th>First award</th><th>Last award</th></tr></thead>
+  <tbody>
+  {% for v in rows %}
+    <tr>
+      <td><a data-row-link href="/app/vendors/{{ v.id }}">{{ v.name }}</a></td>
+      <td>{{ v.uei or '—' }}</td>
+      <td>{{ '${:,.0f}'.format(v.obligations) if v.obligations else '—' }}</td>
+      <td>{{ v.awards }}</td>
+      <td>{{ v.first_award or '—' }}</td>
+      <td>{{ v.last_award or '—' }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="conf">No vendor profiles yet — run
+    <code>python -m src.enrich --build-vendor-profiles</code>.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

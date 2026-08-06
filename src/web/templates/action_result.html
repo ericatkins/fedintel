@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block bodyclass %}public{% endblock %}
+{% block shell %}
+<div class="auth">
+  <div class="brand">Fed<span>intel</span></div>
+  {% if ok %}<div class="okmsg">{{ message }}</div>{% else %}<div class="error">{{ message }}</div>{% endif %}
+  <p class="conf"><a href="/app">Open Fedintel →</a></p>
+</div>
+{% endblock %}

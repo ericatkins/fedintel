@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Company profile{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+<p class="sub">This profile personalizes scoring and the daily brief. Comma-separate list values.
+Presets: software developer · cyber firm · data/AI firm · logistics systems provider.</p>
+{% if saved %}<div class="okmsg">Profile saved. Scoring will use it on the next pipeline run.</div>{% endif %}
+<div class="formcol">
+<form method="post" action="/app/profile">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <label>Company name</label>
+  <input name="name" value="{{ profile.name or '' }}" class="w100">
+  <label>Capabilities (plain English)</label>
+  <textarea name="capabilities" rows="2" class="w100">{{ profile.capabilities | join(', ') if profile.capabilities }}</textarea>
+  <label>Industries</label>
+  <input name="industries" value="{{ profile.industries | join(', ') if profile.industries }}" class="w100">
+  <label>NAICS codes</label>
+  <input name="naics_codes" value="{{ profile.naics_codes | join(', ') if profile.naics_codes }}" class="w100">
+  <label>Agencies of interest</label>
+  <input name="agencies_of_interest" value="{{ profile.agencies_of_interest | join(', ') if profile.agencies_of_interest }}" class="w100">
+  <label>Locations</label>
+  <input name="locations" value="{{ profile.locations | join(', ') if profile.locations }}" class="w100">
+  <label>Set-aside eligibility</label>
+  <input name="set_aside_eligibility" value="{{ profile.set_aside_eligibility | join(', ') if profile.set_aside_eligibility }}" class="w100">
+  <label>Contract vehicles held <span class="conf">(GSA MAS, CIO-SP4, SEWP…) — used to detect blocking requirements</span></label>
+  <input name="contract_vehicles" value="{{ profile.contract_vehicles | join(', ') if profile.contract_vehicles }}" class="w100">
+  <label>Clearances held <span class="conf">(Secret, Top Secret, TS/SCI, Facility Clearance)</span></label>
+  <input name="clearances" value="{{ profile.clearances | join(', ') if profile.clearances }}" class="w100">
+  <label>Certifications <span class="conf">(CMMC Level 2, ISO 9001, FedRAMP…)</span></label>
+  <input name="certifications" value="{{ profile.certifications | join(', ') if profile.certifications }}" class="w100">
+  <label>Keywords to boost</label>
+  <input name="keywords_boost" value="{{ profile.keywords_boost | join(', ') if profile.keywords_boost }}" class="w100">
+  <label>Keywords to suppress</label>
+  <input name="keywords_suppress" value="{{ profile.keywords_suppress | join(', ') if profile.keywords_suppress }}" class="w100">
+  <label>Categories to ignore</label>
+  <input name="excluded_categories" value="{{ profile.excluded_categories | join(', ') if profile.excluded_categories }}" class="w100">
+  <div class="mt14"><button type="submit">Save profile</button></div>
+</form>
+</div>
+{% if learned %}
+<div class="panel mt14">
+  <h3>Learned preferences</h3>
+  <p class="conf">Your feedback (track, pursue, good/bad match, ignore, hide similar)
+  nudges these weights. Each is capped at ±10; the total effect on any score is
+  capped at ±15 points and always shown in the match reasons.</p>
+  <ul class="evlist">
+  {% for feat, w in learned.items() %}
+    <li>{{ feat.replace(':', ': ') }} <span class="{{ 'accent' if w > 0 else 'dim' }}">{{ '%+d' % w }}</span></li>
+  {% endfor %}
+  </ul>
+  <form method="post" action="/app/profile/reset-preferences" class="mt12">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <button type="submit">Reset learned preferences</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

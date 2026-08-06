@@ -1,0 +1,16 @@
+{
+  "name": "Your Software Firm LLC",
+  "industries": ["defense software", "logistics modernization"],
+  "capabilities": [
+    "custom web applications", "legacy system modernization", "data migration",
+    "dashboards and reporting", "workflow automation", "api integration"
+  ],
+  "technologies": ["python", "postgres", "react", "cloud", "power platform", "sharepoint"],
+  "naics_codes": ["541511", "541512", "541519"],
+  "agencies_of_interest": ["army", "air force", "darpa", "dla", "nasa"],
+  "locations": ["huntsville", "redstone", "alabama"],
+  "set_aside_eligibility": ["small business", "total small business", "sba"],
+  "excluded_categories": ["Enterprise IT"],
+  "keywords_boost": ["inventory management", "configuration management", "modernization"],
+  "keywords_suppress": ["help desk", "staff augmentation", "call center"]
+}

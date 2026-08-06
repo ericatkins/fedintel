@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — {{ o.title }}{% endblock %}
+{% block content %}
+<h1>{{ o.title }}</h1>
+<p class="sub">{{ o.agency or 'Federal' }} · {{ o.office or '—' }} · {{ o.notice_type or '—' }}
+{% if o.response_deadline %} · due {{ o.response_deadline.strftime('%b %d, %Y') }}{% endif %}</p>
+
+{% if d %}
+{% set rec = d.pursuit_recommendation or {} %}
+{% set inc = d.incumbent_analysis or {} %}
+{% set awards = d.last_10_relevant_awards or [] %}
+<div class="decision">
+  <div class="cell verdict">
+    <div class="k">Verdict</div>
+    <div class="v">{{ rec.recommendation or '—' }}</div>
+    <div class="conf">confidence {{ rec.confidence or '—' }}/100</div>
+  </div>
+  <div class="cell">
+    <div class="k">Comparable award estimate</div>
+    <div class="v">
+      {%- if value_est -%}${{ '{:,.0f}'.format(value_est.low) }}–${{ '{:,.0f}'.format(value_est.high) }}
+      {%- else -%}No defensible basis yet{%- endif -%}</div>
+    <div class="conf">{% if value_est %}median ${{ '{:,.0f}'.format(value_est.median) }}
+      · {{ value_est.basis }} comparable award(s){% if value_est.outliers_excluded %}
+      · {{ value_est.outliers_excluded }} outlier excluded{% endif %}{% else %}needs ≥2
+      comparable awards{% endif %}</div>
+  </div>
+  <div class="cell">
+    <div class="k">Incumbent</div>
+    <div class="v">{{ inc.likely_incumbent_name or inc.incumbent_status | replace('_', ' ') | default('no known incumbent', true) }}</div>
+    <div class="conf">{{ inc.confidence_band or '' }}</div>
+  </div>
+  <div class="cell">
+    <div class="k">Top risk</div>
+    <div class="v vsm">{{ (rec.top_risks or ['—'])[0] }}</div>
+  </div>
+  <div class="cell">
+    <div class="k">Do next</div>
+    <div class="v vsm">{{ (rec.next_actions or ['Review the notice'])[0] }}</div>
+  </div>
+</div>
+{% endif %}
+
+{% if qualification %}
+<div class="qual qual-{{ qualification.verdict | replace(' ', '-') | replace('—', '') }}">
+  <div class="qv">Bid qualification: <strong>{{ qualification.verdict }}</strong></div>
+  {% if qualification.disqualifying %}
+    <div class="qd">Cannot prime: {% for r in qualification.disqualifying %}{{ r.value }}{% if not loop.last %}, {% endif %}{% endfor %}
+      — set-aside eligibility you don't hold. Teaming as a sub may still be possible.</div>
+  {% elif qualification.blocking %}
+    <div class="qd">Gated: {% for r in qualification.blocking %}{{ r.value }}{% if not loop.last %}, {% endif %}{% endfor %}
+      — clearable by teaming with a holder.</div>
+  {% endif %}
+  {% if qualification.unknowns %}
+    <div class="conf">{{ qualification.unknowns | length }} requirement(s) can't be judged —
+      your profile doesn't list vehicles/clearances/certifications yet.
+      <a href="/app/profile">Complete your profile →</a></div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="panelgrid">
+  <div class="panel">
+    <h3>Summary</h3>
+    <dl class="kv">
+      <dt>Match score</dt><dd><span class="score {{ 's-high' if (o.score or 0) >= 80 else 's-mid' }}">{{ o.score or '—' }}</span></dd>
+      <dt>Category</dt><dd>{{ o.category or '—' }}</dd>
+      <dt>NAICS</dt><dd>{{ o.naics or '—' }}</dd>
+      <dt>Set-aside</dt><dd>{{ o.set_aside or '—' }}</dd>
+      <dt>Buying office</dt><dd>{{ o.office or '—' }}</dd>
+      <dt>Office location</dt><dd>{{ o.office_location or '—' }}</dd>
+      <dt>Performance</dt><dd>{{ o.place_of_performance or '—' }}</dd>
+      <dt>Posted</dt><dd>{{ o.posted_date or '—' }}</dd>
+    </dl>
+    {% set url = safe_sam_url(o.url, o.source_notice_id) %}
+    {% if url %}<p><a href="{{ url }}">View on SAM.gov →</a></p>{% endif %}
+    {% if o.reasons %}
+    <h3>Why you got this</h3>
+    <ul class="evlist">{% for r in o.reasons[:6] %}<li>{{ r }}</li>{% endfor %}</ul>
+    {% endif %}
+  </div>
+
+  <div>
+  {% if requirements %}
+    <div class="panel timeline-panel">
+      <h3>Compliance matrix — extracted from solicitation documents</h3>
+      <table class="reqs">
+        <thead><tr><th>Requirement</th><th>Status</th><th>Evidence</th></tr></thead>
+        <tbody>
+        {% for r in (qualification.rows if qualification else requirements) %}
+          <tr>
+            <td><span class="conf">{{ r.requirement_type }}</span> {{ r.value }}</td>
+            <td><span class="rstat rstat-{{ r.status | default('info') }}">{{ r.status | default('extracted') }}</span></td>
+            <td class="ev">
+              <details>
+                <summary>{{ r.filename | default('document', true) }}{% if r.page %} p.{{ r.page }}{% endif %}</summary>
+                <span class="quote">{{ r.evidence_quote }}</span>
+                <span class="conf">rule: {{ r.method }} · confidence {{ r.confidence }}/100</span>
+              </details>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <p class="conf">Requirements are matched by deterministic rules against the
+      attachment text — every row shows the sentence it came from. Absence of a
+      row means the rule didn't fire, not that the requirement doesn't exist:
+      always read the solicitation.</p>
+    </div>
+  {% endif %}
+  {% if documents %}
+    <div class="panel timeline-panel">
+      <h3>Solicitation documents</h3>
+      <ul class="evlist">
+      {% for doc in documents %}
+        <li>{{ doc.filename or 'attachment' }}
+          <span class="conf">{{ doc.doc_kind or 'other' }}{% if doc.page_count %} · {{ doc.page_count }}p{% endif %}
+          · {{ doc.fetch_status }}{% if doc.fetch_error %} ({{ doc.fetch_error }}){% endif %}</span></li>
+      {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+  {% if delegation %}
+    <div class="panel timeline-panel">
+      <h3>Congressional delegation — place of performance</h3>
+      <ul class="evlist">
+      {% for m in delegation %}
+        <li>
+          <a href="/app/legislators/{{ m.bioguide_id }}">{{ m.full_name }}</a>
+          <span class="conf">({{ m.party or '—' }}–{{ m.state }}{% if m.chamber == 'rep' %}-{{ m.district if m.district else 'AL' }}{% endif %})</span>
+          {% if m.chamber == 'rep' and m.match_confidence < 90 %}
+            <span class="badge inc" title="city-level match; cities can span districts">district {{ 'estimated' if m.match_confidence else 'unknown' }}</span>
+          {% endif %}
+          {% for cr in m.committee_relevance %}
+            <span class="badge ok" title="{{ cr.why }}">{{ cr.name | replace('House Committee on ', '') | replace('Senate Committee on ', '') }}</span>
+          {% endfor %}
+        </li>
+      {% endfor %}
+      </ul>
+      <p class="conf">Committee badges mark seats with jurisdiction over this
+      buying agency. Engagement guardrails and staff guidance are on each
+      member's page.</p>
+    </div>
+  {% elif delegation is not none %}
+    <div class="panel timeline-panel">
+      <h3>Congressional delegation</h3>
+      <p class="conf">No delegation resolved — the opportunity lists no usable
+      place of performance, or the legislator dataset hasn't been loaded yet
+      (<code>python -m src.enrich --refresh-legislators</code>).</p>
+    </div>
+  {% endif %}
+  {% if lineage and lineage | length > 1 %}
+    <div class="panel timeline-panel">
+      <h3>Lifecycle — {{ o.solicitation_number }}</h3>
+      <div class="timeline">
+        {% for step in lineage %}
+        <span class="tstep {{ 'current' if step.opportunity_id == o.id }}">
+          {% if step.opportunity_id == o.id %}{{ step.stage }}{% else
+          %}<a href="/app/opportunities/{{ step.opportunity_id }}">{{ step.stage }}</a>{% endif %}
+          <span class="t">{{ step.posted_date or '' }}</span>
+        </span>{% if not loop.last %}<span class="tarrow">→</span>{% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+  {% if d %}
+    <div class="tabs">
+      <a href="#intel" class="active">Intelligence</a><a href="#awards">Prior Awards</a>
+      <a href="#incumbent">Incumbent</a><a href="#funding">Funding</a>
+      <a href="#office">Buyer Office</a><a href="#competition">Competition</a>
+      <a href="/app/report/{{ o.id }}">Report ↗</a>
+    </div>
+
+    <div class="panel section" id="intel">
+      <h3>Intelligence cards</h3>
+      <dl class="kv">
+        <dt>Prior work found</dt><dd>{{ d.similar_work | length }} similar awards linked</dd>
+        <dt>Likely incumbent</dt>
+        <dd>{% if d.incumbent_analysis.likely_incumbent_name %}{{ d.incumbent_analysis.likely_incumbent_name }}
+            <span class="conf">({{ d.incumbent_analysis.incumbent_confidence }}/100)</span>
+            {% else %}{{ d.incumbent_analysis.incumbent_status | replace('_',' ') }}{% endif %}</dd>
+        <dt>Work origin</dt><dd>{{ d.work_origin_assessment.work_origin_assessment | replace('_',' ') }}
+            <span class="conf">({{ d.work_origin_assessment.confidence }}/100)</span></dd>
+        <dt>Market trend</dt><dd>{{ d.market_size.trend }}{% if d.market_size.yoy_change_pct is not none %} ({{ d.market_size.yoy_change_pct }}% YoY){% endif %}</dd>
+        <dt>Competition</dt><dd>{{ d.competition_landscape.label }}</dd>
+        <dt>Funding context</dt><dd>{{ d.funding_context.label }}
+            <span class="conf">({{ d.funding_context.confidence }}/100)</span></dd>
+      </dl>
+    </div>
+
+    <div class="panel section" id="awards" class="mt12">
+      <h3>Last 10 relevant awards</h3>
+      {% if d.last_10_relevant_awards %}
+      <table><thead><tr><th>Date</th><th>Vendor</th><th>Title</th><th>Obligated</th><th>Sim</th><th>Why</th></tr></thead>
+      <tbody>{% for a in d.last_10_relevant_awards %}
+        <tr><td>{{ a.award_date }}</td><td>{{ a.vendor or '—' }}</td><td>{{ a.title }}</td>
+        <td>{{ '${:,.0f}'.format(a.obligated_amount) if a.obligated_amount else '—' }}</td>
+        <td>{{ a.similarity_score }}</td><td class="conf">{{ a.reason_matched | join('; ') }}</td></tr>
+      {% endfor %}</tbody></table>
+      {% else %}<p class="conf">No relevant prior awards found in loaded data.</p>{% endif %}
+    </div>
+
+    <div class="panel section" id="incumbent" class="mt12">
+      <h3>Incumbent analysis</h3>
+      <p><strong>{{ d.incumbent_analysis.incumbent_status | replace('_',' ') }}</strong>
+      {% if d.incumbent_analysis.likely_incumbent_name %} — {{ d.incumbent_analysis.likely_incumbent_name }}{% endif %}
+      <span class="conf">{{ d.incumbent_analysis.incumbent_confidence }}/100 ({{ d.incumbent_analysis.confidence_band }})</span></p>
+      <ul class="evlist">{% for e in d.incumbent_analysis.supporting_evidence %}<li>{{ e }}</li>{% endfor %}</ul>
+      {% for c in d.incumbent_analysis.caveats %}<div class="caveat">{{ c }}</div>{% endfor %}
+    </div>
+
+    <div class="panel section" id="funding" class="mt12">
+      <h3>Funding context</h3>
+      <p><strong>{{ d.funding_context.label }}</strong>
+      <span class="conf">{{ d.funding_context.confidence }}/100</span></p>
+      {% for c in d.funding_context.caveats %}<div class="caveat">{{ c }}</div>{% endfor %}
+    </div>
+
+    <div class="panel section" id="office" class="mt12">
+      <h3>Buyer office</h3>
+      <p class="conf">{{ d.buyer_profile.resolution.claim }} — {{ d.buyer_profile.resolution.confidence }}/100</p>
+      <p>Labels: {{ d.buyer_profile.labels | join(', ') if d.buyer_profile.labels else '—' }}</p>
+      {% if d.buyer_profile.windows %}
+      <table><thead><tr><th>Window</th><th>Awards</th><th>Obligations</th><th>Median</th></tr></thead>
+      <tbody>{% for w, v in d.buyer_profile.windows.items() %}
+        <tr><td>{{ w }}</td><td>{{ v.award_count }}</td>
+        <td>{{ '${:,.0f}'.format(v.total_obligations) if v.total_obligations else '—' }}</td>
+        <td>{{ '${:,.0f}'.format(v.median_award_value) if v.median_award_value else '—' }}</td></tr>
+      {% endfor %}</tbody></table>{% endif %}
+    </div>
+
+    <div class="panel section" id="competition" class="mt12">
+      <h3>Competition landscape</h3>
+      <p><strong>{{ d.competition_landscape.label }}</strong>
+      {% if d.competition_landscape.top3_share_pct is not none %}
+        <span class="conf">top-3 share {{ d.competition_landscape.top3_share_pct }}%</span>{% endif %}</p>
+      {% if d.competition_landscape.vendors %}
+      <table><thead><tr><th>Vendor</th><th>Obligations</th><th>Awards</th><th>Last</th></tr></thead>
+      <tbody>{% for v in d.competition_landscape.vendors[:6] %}
+        <tr><td>{{ v.vendor_name }}</td>
+        <td>{{ '${:,.0f}'.format(v.obligations) if v.obligations else '—' }}</td>
+        <td>{{ v.award_count }}</td><td>{{ v.last_award_date or '—' }}</td></tr>
+      {% endfor %}</tbody></table>{% endif %}
+    </div>
+
+    <div class="panel section" class="mt12">
+      <h3>Data quality & caveats</h3>
+      {% for q in d.data_quality %}<div class="caveat">{{ q }}</div>{% endfor %}
+    </div>
+  {% else %}
+    <div class="panel"><h3>Intelligence</h3>
+      <p>Dossier generation pending — this opportunity has been queued for enrichment.
+      Basic details are on the left; check back after the next enrichment run.</p></div>
+  {% endif %}
+  </div>
+
+  <div class="panel right-actions">
+    <h3>Decision</h3>
+    {% if d %}
+    <p><span class="badge rec">{{ d.pursuit_recommendation.recommendation }}</span>
+       <span class="conf">{{ d.pursuit_recommendation.confidence }}/100</span></p>
+    <ul class="evlist">{% for r in d.pursuit_recommendation.top_reasons[:3] %}<li>{{ r }}</li>{% endfor %}</ul>
+    {% if d.pursuit_recommendation.top_risks %}
+    <h3>Risks</h3>
+    <ul class="evlist">{% for r in d.pursuit_recommendation.top_risks %}<li>{{ r }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% endif %}
+    <h3>Your status{% if o.user_status %}: <span class="badge ok">{{ o.user_status }}</span>{% endif %}</h3>
+    {% for s in statuses %}
+    <form method="post" action="/app/opportunities/{{ o.id }}/status">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <input type="hidden" name="status" value="{{ s }}">
+      <button type="submit" class="{{ '' if s == 'pursuing' else 'ghost' }}">{{ s }}</button>
+    </form>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

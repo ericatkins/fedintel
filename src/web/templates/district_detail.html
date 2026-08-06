@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — {{ p.state }}-{{ p.district }}{% endblock %}
+{% block content %}
+<h1>{{ p.state }}-{{ '%02d' % p.district if p.district else 'AL' }} district intelligence</h1>
+<p class="sub">{% if p.rep %}Represented by
+  <a href="/app/legislators/{{ p.rep.bioguide_id }}">{{ p.rep.full_name }}</a>
+  ({{ p.rep.party or '—' }}){% else %}Representative not on file — run the
+  legislators refresh{% endif %}</p>
+
+<div class="panelgrid cols3 mt14">
+  <div class="panel">
+    <h3>Federal obligations by fiscal year</h3>
+    <table><thead><tr><th>FY</th><th>All agencies</th></tr></thead><tbody>
+    {% for fy, total in by_fy %}
+      <tr><td>FY{{ fy }}</td><td>{{ '${:,.0f}'.format(total) }}</td></tr>
+    {% else %}<tr><td colspan="2" class="conf">No spending history loaded.</td></tr>{% endfor %}
+    </tbody></table>
+    <h3 class="mt12">Top agencies (all loaded years)</h3>
+    <ul class="evlist">
+    {% for agency, total in top_agencies %}
+      <li>{{ agency }} <span class="conf">{{ '${:,.0f}'.format(total) }}</span></li>
+    {% else %}<li class="conf">—</li>{% endfor %}
+    </ul>
+  </div>
+
+  <div class="panel">
+    <h3>Electoral context</h3>
+    {% if lean %}
+    <p><strong>Computed partisan lean:</strong> {{ lean.lean_margin }} pts
+      ({{ lean.party or '—' }}), {{ lean.basis }}{% if lean.trend %} —
+      margins {{ lean.trend }}{% endif %}</p>
+    <table><thead><tr><th>Cycle</th><th>Winner party</th><th>Margin</th></tr></thead>
+    <tbody>{% for m in lean.per_cycle %}
+      <tr><td>{{ m.cycle }}</td><td>{{ m.party or '—' }}</td><td>{{ m.margin }} pts</td></tr>
+    {% endfor %}</tbody></table>
+    {% else %}
+    <p class="conf">No election results imported — load them with
+    <code>python -m src.enrich --import-election-results results.csv</code>
+    (MIT Election Lab exports map onto the columns).</p>
+    {% endif %}
+    {% if primaries %}
+    <h3 class="mt12">Member's primary history</h3>
+    <ul class="evlist">
+    {% for pr in primaries %}
+      <li>{{ pr.cycle }}: {{ pr.vote_share ~ '%' if pr.vote_share is not none else '—' }}
+        {{ '(won)' if pr.won else '(lost)' if pr.won is false else '' }}
+        <span class="conf">{{ pr.source }}</span></li>
+    {% endfor %}
+    </ul>
+    {% endif %}
+    <h3 class="mt12">Seat outlook — {{ outlook.label }}</h3>
+    <p class="conf">{{ outlook.note }}. Reasons:</p>
+    <ul class="evlist">
+    {% for r in outlook.reasons %}<li>{{ r }}</li>{% else %}
+      <li class="conf">insufficient data — import election results and refresh
+      candidate finance for a reasoned view</li>{% endfor %}
+    </ul>
+    {% if p.finance %}
+    <h3 class="mt12">Campaign finance{% if latest_cycle %} ({{ latest_cycle }} cycle){% endif %}</h3>
+    <table><thead><tr><th>Candidate</th><th>Receipts</th><th>Cash on hand</th></tr></thead>
+    <tbody>{% for f in p.finance if f.cycle == latest_cycle %}
+      <tr><td>{{ f.candidate_name }}{{ ' (incumbent)' if f.is_incumbent }}</td>
+      <td>{{ '${:,.0f}'.format(f.receipts) if f.receipts is not none else '—' }}</td>
+      <td>{{ '${:,.0f}'.format(f.cash_on_hand) if f.cash_on_hand is not none else '—' }}</td></tr>
+    {% endfor %}</tbody></table>
+    {% endif %}
+    <p class="conf mt12">{{ sentiment_note }}</p>
+  </div>
+
+  <div class="panel">
+    <h3>Congressionally directed spending (attributable)</h3>
+    {% if p.directed %}
+    <table><thead><tr><th>FY</th><th>Member</th><th>Project</th><th>Amount</th></tr></thead>
+    <tbody>{% for d in p.directed %}
+      <tr><td>{{ d.fiscal_year }}</td><td>{{ d.member_name }}</td>
+      <td>{{ d.project[:60] }}</td><td>{{ '${:,.0f}'.format(d.amount) }}</td></tr>
+    {% endfor %}</tbody></table>
+    {% else %}
+    <p class="conf">No CPF/earmark records imported — load committee disclosure
+    tables with <code>python -m src.enrich --import-directed-spending cpf.csv</code>.
+    This is the only funding category attributable to a member.</p>
+    {% endif %}
+    <p class="conf mt12">{{ attribution }}</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" },
+  "deploy": {
+    "startCommand": "sh -c 'python -m src.enrich --refresh-awards && python -m src.enrich --refresh-sam-awards && python -m src.enrich --build-vendor-profiles && python -m src.enrich --build-office-market-stats'",
+    "cronSchedule": "0 6 * * 0",
+    "restartPolicyType": "NEVER"
+  }
+}

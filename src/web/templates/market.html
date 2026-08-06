@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Market Intel{% endblock %}
+{% block content %}
+<h1>Market intelligence</h1>
+<p class="sub">Category rollups from stored award history and opportunity flow —
+never live external calls. Trend depth grows with each weekly award refresh.</p>
+<table class="kb">
+  <thead><tr><th>Market</th><th>NAICS</th><th>Opps (30d)</th><th>Awards 1y</th>
+  <th>Awards 3y</th><th>Awards 5y</th><th>Obligations 5y</th><th>Avg award</th></tr></thead>
+  <tbody>
+  {% for m in rows %}
+    <tr>
+      <td><strong>{{ m.category }}</strong></td>
+      <td class="conf">{{ m.naics | join(', ') }}</td>
+      <td>{{ m.opps_30d }}</td>
+      <td>{{ m.awards_1y }}</td>
+      <td>{{ m.awards_3y }}</td>
+      <td>{{ m.awards_5y }}</td>
+      <td>{{ '${:,.0f}'.format(m.obligations_5y) if m.obligations_5y else '—' }}</td>
+      <td>{{ '${:,.0f}'.format(m.avg_award) if m.avg_award else '—' }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="8" class="conf">No award history loaded yet — run
+    <code>python -m src.enrich --refresh-awards</code>.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

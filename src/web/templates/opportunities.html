@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Opportunities{% endblock %}
+{% block content %}
+<h1>Opportunities</h1>
+<p class="sub">j/k to move · Enter to open · Ctrl+K for commands</p>
+<form class="inline" method="get" action="/app/opportunities">
+  <input type="text" name="q" value="{{ q }}" placeholder="keyword / agency">
+  <input type="number" name="min_score" value="{{ min_score }}" min="0" max="100" class="w90" title="min score">
+  <select name="notice_type">
+    <option value="" {{ 'selected' if not notice_type }}>Any notice type</option>
+    <option value="sources sought" {{ 'selected' if notice_type == 'sources sought' }}>Sources Sought</option>
+    <option value="presolicitation" {{ 'selected' if notice_type == 'presolicitation' }}>Presolicitation</option>
+    <option value="solicitation" {{ 'selected' if notice_type == 'solicitation' }}>Solicitation</option>
+  </select>
+  <button type="submit">Filter</button>
+</form>
+<div class="viewsbar">
+  {% for v in views %}
+  <span class="viewchip"><a href="/app/opportunities?view={{ v.id }}">{{ v.name }}</a>
+    <form method="post" action="/app/views/{{ v.id }}/delete" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <button type="submit" class="chipx" title="delete view">×</button>
+    </form></span>
+  {% endfor %}
+  <form method="post" action="/app/views" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <input type="hidden" name="q" value="{{ q }}">
+    <input type="hidden" name="min_score" value="{{ min_score }}">
+    <input type="hidden" name="notice_type" value="{{ notice_type }}">
+    <input type="text" name="name" placeholder="save this view as…" class="w90x">
+    <button type="submit">Save view</button>
+  </form>
+</div>
+<table class="kb">
+  <thead><tr>
+    <th>Score</th><th>Rec</th><th>Title</th><th>Agency</th><th>Office</th><th>Type</th>
+    <th>Set-aside</th><th>NAICS</th><th>Due</th><th>Incumbent</th><th>Mine</th>
+  </tr></thead>
+  <tbody>
+  {% for o in rows %}
+    <tr>
+      <td><span class="score {{ 's-high' if o.score >= 80 else ('s-mid' if o.score >= 60 else 's-low') }}">{{ o.score }}</span></td>
+      <td>{% if o.recommendation %}<span class="badge rec">{{ o.recommendation.recommendation }}</span>{% else %}<span class="conf">pending</span>{% endif %}</td>
+      <td><a data-row-link href="/app/opportunities/{{ o.id }}">{{ o.title }}</a></td>
+      <td>{{ o.agency or '—' }}</td>
+      <td>{{ o.office or '—' }}</td>
+      <td>{{ o.notice_type or '—' }}</td>
+      <td>{{ o.set_aside or '—' }}</td>
+      <td>{{ o.naics or '—' }}</td>
+      <td>{{ o.response_deadline.strftime('%b %d') if o.response_deadline else '—' }}</td>
+      <td>{% if o.incumbent and o.incumbent.likely_incumbent_name %}
+            <span class="badge inc">{{ o.incumbent.incumbent_status | replace('_',' ') }}</span>
+          {% else %}—{% endif %}</td>
+      <td>{% if o.user_status %}<span class="badge ok">{{ o.user_status }}</span>{% else %}—{% endif %}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="11" class="conf">Nothing matches these filters.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

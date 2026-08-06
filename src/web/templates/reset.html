@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block bodyclass %}public{% endblock %}
+{% block shell %}
+<div class="auth">
+  <div class="brand">Fed<span>intel</span></div>
+  <h1>Choose a new password</h1>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="/reset">
+    <input type="hidden" name="u" value="{{ u }}">
+    <input type="hidden" name="e" value="{{ e }}">
+    <input type="hidden" name="t" value="{{ t }}">
+    <label>New password (10+ characters)</label>
+    <input name="password" type="password" required minlength="10" class="w100">
+    <div class="mt14"><button type="submit" class="w100">Update password</button></div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Admin<h2>Job runs (last 20)</h2>
+{% if ops.job_runs %}
+<table><thead><tr><th>Job</th><th>Status</th><th>Started</th><th>Fetched</th><th>Failed</th><th>Error</th></tr></thead>
+<tbody>{% for j in ops.job_runs %}
+<tr><td>{{ j.job }}</td>
+<td><span class="badge {{ 'ok' if j.status == 'ok' else 'inc' }}">{{ j.status }}</span></td>
+<td class="conf">{{ j.started }}</td><td>{{ j.fetched }}</td><td>{{ j.failed }}</td>
+<td class="conf">{{ j.error or '—' }}</td></tr>
+{% endfor %}</tbody></table>
+{% else %}<p class="conf">No job runs recorded yet.</p>{% endif %}
+
+<h2>Digest deliveries (7d)</h2>
+{% if ops.delivery_stats %}
+<div class="cards">{% for d in ops.delivery_stats %}
+<div class="card"><div class="num">{{ d.count }}</div><div class="lbl">{{ d.status }}</div></div>
+{% endfor %}</div>
+{% else %}<p class="conf">No per-subscription deliveries yet.</p>{% endif %}
+
+<h2>Recent signups</h2>
+{% if ops.recent_signups %}
+<table><thead><tr><th>Email</th><th>Organization</th><th>When</th></tr></thead>
+<tbody>{% for u in ops.recent_signups %}
+<tr><td>{{ u.email }}</td><td>{{ u.org }}</td><td class="conf">{{ u.at }}</td></tr>
+{% endfor %}</tbody></table>
+{% else %}<p class="conf">—</p>{% endif %}
+
+<h2>Feedback (30d)</h2>
+{% if ops.feedback_stats %}
+<div class="cards">{% for f in ops.feedback_stats %}
+<div class="card"><div class="num">{{ f.count }}</div><div class="lbl">{{ f.action }}</div></div>
+{% endfor %}</div>
+{% else %}<p class="conf">—</p>{% endif %}
+{% endblock %}
+{% block content %}
+<h1>Admin — operations</h1>
+<p class="sub">Failed work is retried automatically; this view exists so nothing fails silently.</p>
+<div class="cards">
+  <div class="card"><div class="num">{{ ops.enrichment_pending }}</div><div class="lbl">Dossiers pending</div></div>
+  <div class="card"><div class="num">{{ ops.failed_enrichments | length }}</div><div class="lbl">Failed enrichments</div></div>
+  <div class="card"><div class="num">{{ ops.failed_emails | length }}</div><div class="lbl">Unsent digests</div></div>
+</div>
+
+<h2>Failed enrichments</h2>
+{% if ops.failed_enrichments %}
+<table><thead><tr><th>Opportunity</th><th>Agency</th><th>Failed at</th><th>Requeue</th></tr></thead>
+<tbody>{% for f in ops.failed_enrichments %}
+<tr><td><a href="/app/opportunities/{{ f.id }}">{{ f.title }}</a></td><td>{{ f.agency or '—' }}</td>
+<td>{{ f.at or '—' }}</td>
+<td class="conf">python -m src.tools.regenerate_dossier {{ f.id }}</td></tr>
+{% endfor %}</tbody></table>
+{% else %}<p class="conf">None. 🎉</p>{% endif %}
+
+<h2>Digest sends not confirmed</h2>
+{% if ops.failed_emails %}
+<table><thead><tr><th>Digest date</th><th>Status</th><th>Error</th><th>Attempted</th></tr></thead>
+<tbody>{% for f in ops.failed_emails %}
+<tr><td>{{ f.digest_date }}</td><td><span class="badge inc">{{ f.status or 'pending' }}</span></td>
+<td class="conf">{{ f.error or '—' }}</td><td>{{ f.at or '—' }}</td></tr>
+{% endfor %}</tbody></table>
+{% else %}<p class="conf">All digests confirmed sent.</p>{% endif %}
+<h2>Job runs (last 20)</h2>
+{% if ops.job_runs %}
+<table><thead><tr><th>Job</th><th>Status</th><th>Started</th><th>Fetched</th><th>Failed</th><th>Error</th></tr></thead>
+<tbody>{% for j in ops.job_runs %}
+<tr><td>{{ j.job }}</td>
+<td><span class="badge {{ 'ok' if j.status == 'ok' else 'inc' }}">{{ j.status }}</span></td>
+<td class="conf">{{ j.started }}</td><td>{{ j.fetched }}</td><td>{{ j.failed }}</td>
+<td class="conf">{{ j.error or '—' }}</td></tr>
+{% endfor %}</tbody></table>
+{% else %}<p class="conf">No job runs recorded yet.</p>{% endif %}
+
+<h2>Digest deliveries (7d)</h2>
+{% if ops.delivery_stats %}
+<div class="cards">{% for d in ops.delivery_stats %}
+<div class="card"><div class="num">{{ d.count }}</div><div class="lbl">{{ d.status }}</div></div>
+{% endfor %}</div>
+{% else %}<p class="conf">No per-subscription deliveries yet.</p>{% endif %}
+
+<h2>Recent signups</h2>
+{% if ops.recent_signups %}
+<table><thead><tr><th>Email</th><th>Organization</th><th>When</th></tr></thead>
+<tbody>{% for u in ops.recent_signups %}
+<tr><td>{{ u.email }}</td><td>{{ u.org }}</td><td class="conf">{{ u.at }}</td></tr>
+{% endfor %}</tbody></table>
+{% else %}<p class="conf">—</p>{% endif %}
+
+<h2>Feedback (30d)</h2>
+{% if ops.feedback_stats %}
+<div class="cards">{% for f in ops.feedback_stats %}
+<div class="card"><div class="num">{{ f.count }}</div><div class="lbl">{{ f.action }}</div></div>
+{% endfor %}</div>
+{% else %}<p class="conf">—</p>{% endif %}
+{% endblock %}

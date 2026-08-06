@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block bodyclass %}public{% endblock %}
+{% block shell %}
+<div class="auth">
+  <div class="brand">Fed<span>intel</span></div>
+  <h1>Verify your email</h1>
+  {% if resent %}<div class="okmsg">If that address has an unverified account, a fresh
+  link is on its way.</div>{% endif %}
+  <p class="conf">Confirm <strong>{{ email }}</strong> before logging in — open the
+  verification link we sent when you signed up.</p>
+  <form method="post" action="/verify/resend">
+    <input type="hidden" name="email" value="{{ email }}">
+    <button type="submit" class="w100">Resend verification email</button>
+  </form>
+  <p class="conf mt14"><a href="/login">Back to log in</a></p>
+</div>
+{% endblock %}

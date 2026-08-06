@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — {{ v.name }}{% endblock %}
+{% block content %}
+<h1>{{ v.name }}</h1>
+<p class="sub">{% if v.uei %}UEI {{ v.uei }} · {% endif %}public award data only</p>
+<div class="cards">
+  <div class="card"><div class="num">{{ '${:,.0f}'.format(v.obligations) if v.obligations else '—' }}</div>
+    <div class="lbl">Total obligations</div></div>
+  <div class="card"><div class="num">{{ v.awards }}</div><div class="lbl">Award count</div></div>
+  <div class="card"><div class="num">{{ v.last_award or '—' }}</div><div class="lbl">Last award</div></div>
+  <div class="card"><div class="num">{{ v.first_award or '—' }}</div><div class="lbl">First award</div></div>
+</div>
+<div class="panelgrid cols3 mt14">
+  <div class="panel"><h3>Top agencies served</h3>
+    <ul class="evlist">{% for x in v.top_agencies %}<li>{{ x.value }} <span class="conf">({{ x.count }})</span></li>{% else %}<li class="conf">—</li>{% endfor %}</ul></div>
+  <div class="panel"><h3>Top NAICS</h3>
+    <ul class="evlist">{% for x in v.top_naics %}<li>{{ x.value }} <span class="conf">({{ x.count }})</span></li>{% else %}<li class="conf">—</li>{% endfor %}</ul></div>
+  <div class="panel"><h3>Top buying offices</h3>
+    <ul class="evlist">{% for x in v.top_offices %}<li>{{ x.value }} <span class="conf">({{ x.count }})</span></li>{% else %}<li class="conf">—</li>{% endfor %}</ul></div>
+</div>
+<p class="conf" class="mt12">Teaming/competitor read: heavy overlap with your target
+offices and NAICS suggests a competitor on full-and-open work and a teaming candidate on
+set-aside work you qualify for.</p>
+{% endblock %}

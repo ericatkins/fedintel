@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Districts{% endblock %}
+{% block content %}
+<h1>District intelligence — federal money by congressional district</h1>
+<p class="sub">{{ note }}</p>
+<form class="inline" method="get" action="/app/districts">
+  <label>Fiscal year</label>
+  <select name="fy">{% for y in years %}<option value="{{ y }}" {{ 'selected' if y == fy }}>FY{{ y }}</option>{% endfor %}</select>
+  <label>Agency</label>
+  <select name="agency">
+    <option value="">All agencies</option>
+    {% for a in agencies %}<option value="{{ a }}" {{ 'selected' if a == agency }}>{{ a }}</option>{% endfor %}
+  </select>
+  <button type="submit">Rank</button>
+</form>
+<table class="kb">
+  <thead><tr><th>#</th><th>District</th><th>Represented by</th>
+  <th>Obligations (FY{{ fy }})</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td class="conf">{{ loop.index }}</td>
+      <td><a data-row-link href="/app/districts/{{ r.state }}/{{ r.district }}">{{ r.state }}-{{ '%02d' % r.district if r.district else 'AL' }}</a></td>
+      <td>{% if r.rep_name %}<a href="/app/legislators/{{ r.bioguide_id }}">{{ r.rep_name }}</a>
+        <span class="conf">({{ r.party or '—' }})</span>{% else %}<span class="conf">—</span>{% endif %}</td>
+      <td>{{ '${:,.0f}'.format(r.obligations) }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="4" class="conf">No district spending loaded yet — run
+    <code>python -m src.enrich --refresh-district-spending</code>
+    (USAspending, no key required).</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="conf mt12">{{ attribution }}</p>
+{% endblock %}

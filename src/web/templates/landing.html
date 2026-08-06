@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block bodyclass %}public{% endblock %}
+{% block shell %}
+<div class="hero">
+  <div class="brand hero-brand">Fed<span class="accent">intel</span></div>
+  <h1>Federal opportunity intelligence, <em>not keyword alerts</em>.</h1>
+  <p>Fedintel reads SAM.gov and public award data so you don't have to. Every match arrives
+  with the questions answered that a serious contractor asks: has this office bought this
+  before, who won it, is there an incumbent, is the market growing, and what should you do next.</p>
+  <div class="cta">
+    <a href="/signup">Request early access</a>
+    <a class="ghost" href="/login">Log in</a>
+  </div>
+  <div class="samplebox">
+    <strong>Sample intelligence line from this morning's brief:</strong><br><br>
+    <span class="score s-high">88</span>&nbsp; Enterprise Inventory Management System Modernization — DEPT OF THE ARMY · Sources Sought<br>
+    <span class="dim">Intel: 11 similar awards from this buyer since FY2021; likely incumbent
+    ABC Systems (68% confidence); similar-award range $4M–$18M.<br>
+    Recommendation: Track closely — respond to market research and shape the requirement.</span>
+  </div>
+  <div class="samplebox">
+    <strong>Every opportunity carries a dossier:</strong> buyer office profile · last 10 relevant
+    awards · incumbent analysis with evidence · work origin (new start / recompete / modernization)
+    · funding context with strict truthfulness labels · market trend · competition landscape ·
+    pursuit recommendation. Confidence bands on every claim; inference is labeled as inference.
+  </div>
+</div>
+{% endblock %}

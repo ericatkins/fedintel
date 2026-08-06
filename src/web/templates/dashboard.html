@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Dashboard{% endblock %}
+{% block content %}
+<h1>Command center</h1>
+<p class="sub">Stored intelligence only — this page never waits on external APIs.</p>
+<div class="cards">
+  <div class="card"><div class="num">{{ counts.new_today }}</div><div class="lbl">New matches today</div></div>
+  <div class="card"><div class="num">{{ counts.high_match_today }}</div><div class="lbl">High match (80+) today</div></div>
+  <div class="card"><div class="num">{{ counts.closing_7d }}</div><div class="lbl">Closing within 7 days</div></div>
+  <div class="card"><div class="num">{{ counts.tracked_changes_24h }}</div><div class="lbl">Tracked changes (24h)</div></div>
+  <div class="card"><div class="num">{{ counts.stage_transitions_7d }}</div><div class="lbl">Stage transitions (7d)</div></div>
+  <div class="card"><div class="num">{{ counts.dossier_queue }}</div><div class="lbl">Dossier queue</div></div>
+</div>
+
+<h2>Top matches</h2>
+<table class="kb">
+  <thead><tr><th>Score</th><th>Title</th><th>Agency</th><th>Type</th><th>Due</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for o in top %}
+    <tr>
+      <td><span class="score {{ 's-high' if o.score >= 80 else 's-mid' }}">{{ o.score }}</span></td>
+      <td><a data-row-link href="/app/opportunities/{{ o.id }}">{{ o.title }}</a></td>
+      <td>{{ o.agency or '—' }}</td>
+      <td>{{ o.notice_type or '—' }}</td>
+      <td>{{ o.response_deadline.strftime('%b %d') if o.response_deadline else '—' }}</td>
+      <td>{% if o.user_status %}<span class="badge ok">{{ o.user_status }}</span>{% else %}—{% endif %}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="conf">No scored opportunities yet — run the ingest pipeline.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Event feed</h2>
+<ul class="feed">
+  {% for e in events %}
+  <li><span class="badge">{{ e.event_type }}</span>
+      <a href="/app/opportunities/{{ e.opportunity_id }}">{{ e.title }}</a>
+      <div class="t">{{ e.created_at }}</div></li>
+  {% else %}<li class="conf">No events yet.</li>{% endfor %}
+</ul>
+<div class="panelgrid cols3 mt14">
+  <div class="panel">
+    <h3>Closing soon (7 days)</h3>
+    <ul class="evlist">
+    {% for o in closing %}
+      <li><a href="/app/opportunities/{{ o.id }}">{{ o.title[:60] }}</a>
+        <span class="conf">{{ o.response_deadline.strftime('%b %d') if o.response_deadline else '' }}
+        · score {{ o.score }}{{ ' · ' ~ o.user_status if o.user_status }}</span></li>
+    {% else %}<li class="conf">Nothing closing this week.</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="panel">
+    <h3>Stage transitions (yours)</h3>
+    <ul class="evlist">
+    {% for t in transitions %}
+      <li><a href="/app/opportunities/{{ t.opportunity_id }}">{{ t.title[:60] }}</a>
+        <span class="conf">{{ t.detail.from }} → {{ t.detail.to }}</span></li>
+    {% else %}<li class="conf">No stage advances on your matches in 14 days.</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="panel">
+    <h3>Pursuit pipeline</h3>
+    <ul class="evlist">
+    {% for status, items in pipeline.items() if items %}
+      <li>{{ status }} <span class="conf">({{ items | length }})</span></li>
+    {% else %}<li class="conf">Nothing tracked yet — mark an opportunity to start.</li>{% endfor %}
+    </ul>
+    {% if delivery %}<p class="conf mt12">Last digest: {{ delivery.digest_date }} ·
+    {{ delivery.status }} · {{ delivery.opportunities }} matches</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

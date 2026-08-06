@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Account{% endblock %}
+{% block content %}
+<h1>Account</h1>
+<p class="sub">{{ user.email }} · plan: <strong>{{ plan }}</strong></p>
+
+<div class="panel mt14">
+  <h3>Sessions</h3>
+  <p class="conf">Sign out of every device (including this one).</p>
+  <form method="post" action="/app/logout-all">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <button type="submit">Log out all sessions</button>
+  </form>
+</div>
+
+<div class="panel mt14">
+  <h3>Delete account</h3>
+  <p class="conf">This blocks your login immediately, revokes every session, and stops
+  your digests. Organization data is retained for other members; a full purge can be
+  requested from support. This cannot be undone from the app.</p>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="/app/account/delete">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <label>Type <strong>delete my account</strong> to confirm</label>
+    <input type="text" name="confirm" class="w100" autocomplete="off">
+    <div class="mt12"><button type="submit">Delete my account</button></div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,7 @@
+-r requirements.txt
+-r requirements-api.txt
+pytest>=8.2
+ruff>=0.5
+bandit>=1.7.9
+pip-audit>=2.7
+reportlab>=4.0.0

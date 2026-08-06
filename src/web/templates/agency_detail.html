@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — {{ a.office or 'Office' }}{% endblock %}
+{% block content %}
+<h1>{{ a.office or 'Buying office' }}</h1>
+<p class="sub">{{ a.department or '—' }} · {{ a.subtier or '—' }}
+{% if a.org_code %} · org code {{ a.org_code }}{% endif %}
+ · identity confidence {{ a.confidence }}/100</p>
+
+<h2>Market stats by fiscal year × NAICS</h2>
+{% if a.stats %}
+<table>
+  <thead><tr><th>FY</th><th>NAICS</th><th>Awards</th><th>Obligations</th><th>Median</th>
+  <th>Vendors</th><th>Top vendor share</th><th>Set-aside %</th><th>Competed %</th></tr></thead>
+  <tbody>
+  {% for s in a.stats %}
+    <tr><td>{{ s.fiscal_year }}</td><td>{{ s.naics or '—' }}</td><td>{{ s.award_count }}</td>
+    <td>{{ '${:,.0f}'.format(s.total_obligations) if s.total_obligations else '—' }}</td>
+    <td>{{ '${:,.0f}'.format(s.median_award_value) if s.median_award_value else '—' }}</td>
+    <td>{{ s.unique_vendor_count or '—' }}</td>
+    <td>{{ s.top_vendor_share ~ '%' if s.top_vendor_share is not none else '—' }}</td>
+    <td>{{ s.set_aside_share ~ '%' if s.set_aside_share is not none else '—' }}</td>
+    <td>{{ s.competed_share ~ '%' if s.competed_share is not none else '—' }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="conf">No materialized stats for this office yet.</p>{% endif %}
+
+<h2>Recent awards</h2>
+{% if a.recent_awards %}
+<table>
+  <thead><tr><th>Date</th><th>Vendor</th><th>Title</th><th>Obligated</th><th>NAICS</th></tr></thead>
+  <tbody>
+  {% for aw in a.recent_awards %}
+    <tr><td>{{ aw.award_date or '—' }}</td><td>{{ aw.vendor or '—' }}</td>
+    <td>{{ aw.title or '—' }}</td>
+    <td>{{ '${:,.0f}'.format(aw.obligated_amount) if aw.obligated_amount else '—' }}</td>
+    <td>{{ aw.naics or '—' }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="conf">No award history attributed to this office yet.</p>{% endif %}
+{% endblock %}

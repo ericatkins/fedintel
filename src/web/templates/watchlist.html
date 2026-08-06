@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Watchlist{% endblock %}
+{% block content %}
+<h1>Watchlist</h1>
+<p class="sub">Your capture pipeline. Statuses: watching → researching → pursuing → submitted → won/lost.</p>
+<table class="kb">
+  <thead><tr><th>Status</th><th>Score</th><th>Title</th><th>Agency</th><th>Due</th></tr></thead>
+  <tbody>
+  {% for t in rows %}
+    <tr>
+      <td><span class="badge ok">{{ t.status }}</span></td>
+      <td>{{ t.score }}</td>
+      <td><a data-row-link href="/app/opportunities/{{ t.opportunity_id }}">{{ t.title }}</a></td>
+      <td>{{ t.agency or '—' }}</td>
+      <td>{{ t.response_deadline.strftime('%b %d, %Y') if t.response_deadline else '—' }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="conf">Nothing tracked yet. Open an opportunity and set a status.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

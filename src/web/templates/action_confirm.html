@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block bodyclass %}public{% endblock %}
+{% block shell %}
+<div class="auth">
+  <div class="brand">Fed<span>intel</span></div>
+  <h1>Confirm action</h1>
+  <p>You're about to <strong>{{ label }}</strong>.</p>
+  <p class="conf">Nothing has happened yet — email scanners that pre-open links can't
+  change your data. Confirm below to proceed.</p>
+  <form method="post" action="/a/{{ opp_id }}/{{ action }}">
+    <input type="hidden" name="t" value="{{ t }}">
+    <input type="hidden" name="e" value="{{ e }}">
+    <input type="hidden" name="s" value="{{ s }}">
+    <input type="hidden" name="o" value="{{ o }}">
+    <button type="submit" class="w100">Confirm</button>
+  </form>
+</div>
+{% endblock %}
