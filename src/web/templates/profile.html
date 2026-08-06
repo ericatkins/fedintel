@@ -37,6 +37,55 @@ Presets: software developer · cyber firm · data/AI firm · logistics systems p
   <div class="mt14"><button type="submit">Save profile</button></div>
 </form>
 </div>
+<div class="panel mt14" id="projects">
+  <h3>Past performance evidence library</h3>
+  <p class="conf">Recorded projects power the past-performance and buyer-position
+  dimensions of every opportunity's decision stack and the requirement-to-proof
+  column of the compliance matrix. Private to your organization. Every entry
+  should note where the evidence lives (contract file, CPARS copy, reference).</p>
+  {% if projects %}
+  <table><thead><tr><th>Project</th><th>Customer</th><th>Role</th><th>NAICS</th>
+    <th>Period</th><th>Value</th><th></th></tr></thead>
+  <tbody>
+  {% for p in projects %}
+    <tr><td>{{ p.title }}
+      {% if p.scope %}<div class="conf">{{ p.scope[:160] }}{% if p.scope|length > 160 %}…{% endif %}</div>{% endif %}</td>
+    <td>{{ p.customer_agency or '—' }}{% if p.customer_office %}<div class="conf">{{ p.customer_office }}</div>{% endif %}</td>
+    <td>{{ p.role or '—' }}</td><td>{{ p.naics or '—' }}</td>
+    <td>{{ p.period_start or '?' }} → {{ p.period_end or '?' }}</td>
+    <td>{{ '${:,.0f}'.format(p.value_total) if p.value_total else '—' }}</td>
+    <td><form method="post" action="/app/profile/projects/{{ p.id }}/delete">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <button type="submit" class="ghost">remove</button></form></td></tr>
+  {% endfor %}
+  </tbody></table>
+  {% else %}
+  <p class="conf">No projects recorded yet — opportunity pages will honestly show
+  "past performance: unknown" until you add some.</p>
+  {% endif %}
+  <details class="mt12"><summary>Add a project</summary>
+  <form method="post" action="/app/profile/projects">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <label>Project title *</label><input name="title" class="w100" required>
+    <label>Customer agency</label><input name="customer_agency" class="w100" placeholder="e.g. Dept of the Army">
+    <label>Customer office</label><input name="customer_office" class="w100">
+    <label>Contract / order number</label><input name="contract_identifier" class="w100">
+    <label>Role</label>
+    <select name="role"><option value="">—</option><option value="prime">prime</option><option value="sub">sub</option></select>
+    <label>NAICS</label><input name="naics" class="w100">
+    <label>Period start (YYYY-MM-DD)</label><input name="period_start" class="w100">
+    <label>Period end (YYYY-MM-DD)</label><input name="period_end" class="w100">
+    <label>Total value (your share, USD)</label><input name="value_total" class="w100">
+    <label>Scope (what you actually delivered)</label><textarea name="scope" rows="3" class="w100"></textarea>
+    <label>Technologies / methods</label><input name="technologies" class="w100">
+    <label>Measurable outcomes</label><textarea name="outcomes" rows="2" class="w100"></textarea>
+    <label>Partners involved</label><input name="partners" class="w100">
+    <label>Evidence source <span class="conf">(where is this documented?)</span></label>
+    <input name="source_note" class="w100">
+    <div class="mt12"><button type="submit">Add project</button></div>
+  </form>
+  </details>
+</div>
 {% if learned %}
 <div class="panel mt14">
   <h3>Learned preferences</h3>

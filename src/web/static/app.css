@@ -129,6 +129,7 @@ label{display:block;color:var(--dim);font-size:11px;margin:10px 0 3px;text-trans
 .stack .ev{max-width:420px}
 .rationale{margin-top:8px}
 .tstep.inferred{border-style:dashed;color:var(--dim)}
+.inline-form{display:inline}
 .decision .cell{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
 .decision .cell .k{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
 .decision .cell .v{font-size:14px;font-weight:700;margin-top:4px}

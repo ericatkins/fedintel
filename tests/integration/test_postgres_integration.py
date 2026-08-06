@@ -734,3 +734,69 @@ def test_qualification_caps_match_score_per_org(conn):
         cur.execute("delete from organizations where id=%s", (blocked_org,))
         cur.execute("delete from opportunities where id=%s", (opp_id,))
     conn.commit()
+
+
+def test_company_projects_and_capture_tasks_tenant_isolated(conn):
+    """The 011 tables enforce org scoping through the store layer in real SQL."""
+    from src.web.store import PgStore
+    store = PgStore.for_connection(conn)
+    with conn.cursor() as cur:
+        cur.execute("insert into organizations (name) values ('ProjCo A') returning id")
+        org_a = cur.fetchone()[0]
+        cur.execute("insert into organizations (name) values ('ProjCo B') returning id")
+        org_b = cur.fetchone()[0]
+        cur.execute("""insert into opportunities (source, source_notice_id, title,
+                       content_hash, raw_json) values ('sam','pg-proj-1','T','ph','{}')
+                       returning id""")
+        opp_id = cur.fetchone()[0]
+    conn.commit()
+
+    pid = store.add_project(org_a, {"title": "Private cloud migration",
+                                    "naics": "541512",
+                                    "period_end": "2025-06-30",
+                                    "value_total": 2500000})
+    assert store.list_projects(org_b) == []
+    store.delete_project(org_b, pid)                 # cross-tenant delete no-ops
+    conn.commit()
+    assert [p["title"] for p in store.list_projects(org_a)] == \
+        ["Private cloud migration"]
+
+    tid = store.add_capture_task(org_a, "Call the contracting officer",
+                                 opportunity_id=opp_id, due_date="2026-09-01")
+    assert store.list_capture_tasks(org_b) == []
+    store.set_capture_task_status(org_b, tid, "done")  # cross-tenant no-op
+    conn.commit()
+    tasks = store.list_capture_tasks(org_a)
+    assert tasks[0]["status"] == "open"
+    assert tasks[0]["opportunity_title"] == "T"
+
+    with conn.cursor() as cur:
+        cur.execute("delete from organizations where id in (%s,%s)", (org_a, org_b))
+        cur.execute("delete from opportunities where id=%s", (opp_id,))
+    conn.commit()
+
+
+def test_dossier_v2_sections_round_trip(conn):
+    """contract_family_json and buyer_dna_json persist and read back."""
+    from src import db_intel
+    with conn.cursor() as cur:
+        cur.execute("""insert into opportunities (source, source_notice_id, title,
+                       content_hash, raw_json) values ('sam','pg-d2-1','T2','dh','{}')
+                       returning id""")
+        opp_id = cur.fetchone()[0]
+        dossier = {
+            "dossier_version": 2, "snapshot": {}, "buyer_profile": {},
+            "similar_work": [], "last_10_relevant_awards": [],
+            "incumbent_analysis": {}, "work_origin_assessment": {},
+            "funding_context": {}, "market_size": {},
+            "competition_landscape": {}, "acquisition_pattern": {},
+            "pursuit_recommendation": {}, "data_quality": [],
+            "contract_family": {"members": [], "recompete": {"confidence": 10}},
+            "buyer_dna": {"status": "insufficient_data"},
+        }
+        db_intel.save_dossier(cur, opp_id, None, dossier)
+        fetched = db_intel.fetch_dossier(cur, opp_id)
+        assert fetched["contract_family"]["recompete"]["confidence"] == 10
+        assert fetched["buyer_dna"]["status"] == "insufficient_data"
+        cur.execute("delete from opportunities where id=%s", (opp_id,))
+    conn.commit()

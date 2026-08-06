@@ -126,13 +126,29 @@
   {% if requirements %}
     <div class="panel timeline-panel">
       <h3>Compliance matrix — extracted from solicitation documents</h3>
+      {% if proof and proof.summary.mappable_requirements %}
+      <p class="conf">Requirement-to-proof:
+        {{ proof.summary.with_any_proof }}/{{ proof.summary.mappable_requirements }}
+        mappable requirement(s) have candidate evidence in your project library
+        ({{ proof.summary.strong_proof }} strong{% if proof.summary.stale_proof %},
+        {{ proof.summary.stale_proof }} stale{% endif %}).</p>
+      {% endif %}
       <table class="reqs">
-        <thead><tr><th>Requirement</th><th>Status</th><th>Evidence</th></tr></thead>
+        <thead><tr><th>Requirement</th><th>Status</th><th>Your evidence</th><th>Source</th></tr></thead>
         <tbody>
-        {% for r in (qualification.rows if qualification else requirements) %}
+        {% for r in ((proof.rows if proof else None) or (qualification.rows if qualification else requirements)) %}
           <tr>
             <td><span class="conf">{{ r.requirement_type }}</span> {{ r.value }}</td>
             <td><span class="rstat rstat-{{ r.status | default('info') }}">{{ r.status | default('extracted') }}</span></td>
+            <td class="ev">
+              {% if r.proof_status == 'profile' %}
+                <span class="conf">judged from profile fields</span>
+              {% elif r.proof_status %}
+                <span class="rating r-{{ 'strong' if r.proof_status == 'strong' else ('weak' if r.proof_status in ('weak', 'stale') else 'unknown') }}">{{ r.proof_status }}</span>
+                {% if r.proof_project %}<div class="conf">{{ r.proof_project }}</div>{% endif %}
+                {% if r.proof_why %}<div class="conf">{{ r.proof_why | join('; ') }}</div>{% endif %}
+              {% else %}<span class="conf">—</span>{% endif %}
+            </td>
             <td class="ev">
               <details>
                 <summary>{{ r.filename | default('document', true) }}{% if r.page %} p.{{ r.page }}{% endif %}</summary>
@@ -147,7 +163,9 @@
       <p class="conf">Requirements are matched by deterministic rules against the
       attachment text — every row shows the sentence it came from. Absence of a
       row means the rule didn't fire, not that the requirement doesn't exist:
-      always read the solicitation.</p>
+      always read the solicitation. Proof mapping finds candidate evidence in
+      your recorded projects; it never equates keyword overlap with demonstrated
+      past performance.</p>
     </div>
   {% endif %}
   {% if documents %}
@@ -385,6 +403,41 @@
     <ul class="evlist">{% for r in d.pursuit_recommendation.top_risks %}<li>{{ r }}</li>{% endfor %}</ul>
     {% endif %}
     {% endif %}
+    <h3 id="capture">Capture plan</h3>
+    {% if tasks %}
+    <ul class="evlist">
+    {% for t in tasks %}
+      <li>{{ t.title }}
+        {% if t.due_date %}<span class="conf">due {{ t.due_date }}</span>{% endif %}
+        {% if t.owner %}<span class="conf">· {{ t.owner }}</span>{% endif %}
+        <form method="post" action="/app/tasks/{{ t.id }}/status" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf }}">
+          <input type="hidden" name="status" value="done">
+          <button type="submit" class="ghost">done</button>
+        </form>
+      </li>
+    {% endfor %}
+    </ul>
+    {% else %}
+    <p class="conf">No capture tasks yet.</p>
+    {% endif %}
+    {% if decision %}
+    <form method="post" action="/app/opportunities/{{ o.id }}/tasks">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <input type="hidden" name="title" value="{{ decision.next_action }}">
+      <input type="hidden" name="source" value="generated">
+      <button type="submit" class="ghost">+ add recommended action</button>
+    </form>
+    {% endif %}
+    <details><summary class="conf">+ add custom task</summary>
+    <form method="post" action="/app/opportunities/{{ o.id }}/tasks">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <label>Task</label><input name="title" class="w100" required>
+      <label>Owner</label><input name="owner" class="w100">
+      <label>Due (YYYY-MM-DD)</label><input name="due_date" class="w100">
+      <div class="mt12"><button type="submit">Add task</button></div>
+    </form>
+    </details>
     <h3>Your status{% if o.user_status %}: <span class="badge ok">{{ o.user_status }}</span>{% endif %}</h3>
     {% for s in statuses %}
     <form method="post" action="/app/opportunities/{{ o.id }}/status">

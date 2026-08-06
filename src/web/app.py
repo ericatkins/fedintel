@@ -349,7 +349,8 @@ def profile_page(session: str | None = Cookie(default=None, alias=SESSION_COOKIE
     profile = store().get_profile(user["org_id"]) or {}
     return render("profile.html", user=user, profile=profile, saved=False,
                   csrf=csrf_for(session), title="Company profile",
-                  learned=store().preference_weights(user["org_id"]))
+                  learned=store().preference_weights(user["org_id"]),
+                  projects=store().list_projects(user["org_id"]))
 
 
 PROFILE_LIST_FIELDS = ("capabilities", "industries", "naics_codes", "agencies_of_interest",
@@ -386,7 +387,106 @@ def save_profile(request: Request,
     audit(request, "profile_update", user=user)
     return render("profile.html", user=user, profile=profile, saved=True,
                   csrf=csrf_for(session), title="Company profile",
-                  learned=store().preference_weights(user["org_id"]))
+                  learned=store().preference_weights(user["org_id"]),
+                  projects=store().list_projects(user["org_id"]))
+
+
+def _clean_date(value: str):
+    from datetime import date as _date
+    try:
+        return _date.fromisoformat(value.strip()) if value.strip() else None
+    except ValueError:
+        return None
+
+
+def _clean_number(value: str):
+    try:
+        return float(value.replace(",", "").replace("$", "").strip()) \
+            if value.strip() else None
+    except ValueError:
+        return None
+
+
+@app.post("/app/profile/projects")
+def add_project(request: Request,
+                session: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+                csrf_token: str = Form(""), title: str = Form(""),
+                customer_agency: str = Form(""), customer_office: str = Form(""),
+                contract_identifier: str = Form(""), role: str = Form(""),
+                naics: str = Form(""), psc: str = Form(""),
+                period_start: str = Form(""), period_end: str = Form(""),
+                value_total: str = Form(""), scope: str = Form(""),
+                technologies: str = Form(""), outcomes: str = Form(""),
+                partners: str = Form(""), source_note: str = Form("")):
+    user = require_user(session)
+    require_csrf(session, csrf_token)
+    if not title.strip():
+        return RedirectResponse("/app/profile", status_code=303)
+    store().add_project(user["org_id"], {
+        "title": title.strip()[:300],
+        "customer_agency": customer_agency.strip()[:200],
+        "customer_office": customer_office.strip()[:200],
+        "contract_identifier": contract_identifier.strip()[:100],
+        "role": role if role in ("prime", "sub") else None,
+        "naics": naics.strip()[:10], "psc": psc.strip()[:10],
+        "period_start": _clean_date(period_start),
+        "period_end": _clean_date(period_end),
+        "value_total": _clean_number(value_total),
+        "scope": scope.strip()[:4000], "technologies": technologies.strip()[:1000],
+        "outcomes": outcomes.strip()[:2000], "partners": partners.strip()[:500],
+        "source_note": source_note.strip()[:500]})
+    store().request_match_refresh(user["org_id"])
+    audit(request, "project_added", user=user)
+    return RedirectResponse("/app/profile#projects", status_code=303)
+
+
+@app.post("/app/profile/projects/{project_id}/delete")
+def delete_project(request: Request, project_id: int, csrf_token: str = Form(""),
+                   session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
+    user = require_user(session)
+    require_csrf(session, csrf_token)
+    store().delete_project(user["org_id"], project_id)
+    audit(request, "project_deleted", user=user, project_id=project_id)
+    return RedirectResponse("/app/profile#projects", status_code=303)
+
+
+@app.post("/app/opportunities/{opp_id}/tasks")
+def add_capture_task(request: Request, opp_id: int, csrf_token: str = Form(""),
+                     title: str = Form(""), detail: str = Form(""),
+                     owner: str = Form(""), due_date: str = Form(""),
+                     source: str = Form("manual"),
+                     session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
+    user = require_user(session)
+    require_csrf(session, csrf_token)
+    if not store().get_opportunity(user["org_id"], opp_id):
+        raise HTTPException(status_code=404, detail="opportunity not found")
+    if title.strip():
+        store().add_capture_task(
+            user["org_id"], title.strip()[:300], detail=detail.strip()[:1000],
+            opportunity_id=opp_id, user_id=user["user_id"],
+            owner=owner.strip()[:100], due_date=_clean_date(due_date),
+            source="generated" if source == "generated" else "manual")
+        audit(request, "capture_task_added", user=user, opportunity_id=opp_id)
+    return RedirectResponse(f"/app/opportunities/{opp_id}#capture",
+                            status_code=303)
+
+
+@app.post("/app/tasks/{task_id}/status")
+def set_task_status(request: Request, task_id: int, status: str = Form(...),
+                    csrf_token: str = Form(""),
+                    session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
+    user = require_user(session)
+    require_csrf(session, csrf_token)
+    if status not in ("open", "done", "dropped"):
+        raise HTTPException(status_code=400, detail="invalid status")
+    store().set_capture_task_status(user["org_id"], task_id, status)
+    audit(request, "capture_task_status", user=user, task_id=task_id,
+          status=status)
+    dest = request.headers.get("referer") or "/app/watchlist"
+    from urllib.parse import urlparse
+    parsed = urlparse(dest)
+    safe_dest = parsed.path if parsed.path.startswith("/app") else "/app/watchlist"
+    return RedirectResponse(safe_dest, status_code=303)
 
 
 @app.get("/app", response_class=HTMLResponse)
@@ -444,14 +544,18 @@ def opportunity_detail(opp_id: int,
     plan = store().org_plan(user["org_id"])
     delegation = (store().delegation_for_opportunity(opp_id)
                   if allows(plan, "delegation_intel") else None)
-    documents = requirements = qualification = None
+    projects = store().list_projects(user["org_id"])
+    documents = requirements = qualification = proof = None
     if allows(plan, "document_intel"):
         documents = store().documents_for_opportunity(opp_id)
         requirements = store().requirements_for_opportunity(opp_id)
         if requirements:
             from ..documents.qualification import assess
+            from ..intel.proof import map_requirements_to_proof
             qualification = assess(requirements,
                                    store().get_profile(user["org_id"]) or {})
+            proof = map_requirements_to_proof(qualification["rows"], projects,
+                                              opp)
     from datetime import date
     from datetime import timezone as _tz
 
@@ -466,13 +570,15 @@ def opportunity_detail(opp_id: int,
         match={"score": opp.get("score"), "reasons": opp.get("reasons") or []},
         dossier=dossier, qualification=qualification, value_est=value_est,
         documents=documents, days_left=days_left,
-        projects=store().list_projects(user["org_id"]),
+        projects=projects,
         weights=store().preference_weights(user["org_id"]))
+    tasks = store().list_capture_tasks(user["org_id"], opportunity_id=opp_id)
     return render("opportunity_detail.html", user=user, o=opp, d=dossier,
                   lineage=lineage, statuses=TRACK_STATUSES, csrf=csrf_for(session),
                   value_est=value_est, delegation=delegation, documents=documents,
                   requirements=requirements, qualification=qualification,
-                  decision=decision, days_left=days_left)
+                  proof=proof, decision=decision, days_left=days_left,
+                  tasks=tasks)
 
 
 @app.post("/app/opportunities/{opp_id}/status")
@@ -496,7 +602,10 @@ def set_status(request: Request, opp_id: int, status: str = Form(...),
 def watchlist(session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
     user = require_user(session)
     rows = store().list_tracked(user["org_id"])
-    return render("watchlist.html", user=user, rows=rows, statuses=TRACK_STATUSES)
+    tasks = store().list_capture_tasks(user["org_id"])
+    return render("watchlist.html", user=user, rows=rows,
+                  statuses=TRACK_STATUSES, tasks=tasks,
+                  csrf=csrf_for(session))
 
 
 @app.get("/app/alerts", response_class=HTMLResponse)

@@ -19,4 +19,38 @@
   {% endfor %}
   </tbody>
 </table>
+
+<div class="panel mt14">
+  <h3>Open capture tasks</h3>
+  {% if tasks %}
+  <table>
+    <thead><tr><th>Task</th><th>Opportunity</th><th>Owner</th><th>Due</th><th></th></tr></thead>
+    <tbody>
+    {% for t in tasks %}
+      <tr>
+        <td>{{ t.title }}{% if t.source == 'generated' %} <span class="conf">(recommended)</span>{% endif %}</td>
+        <td>{% if t.opportunity_id %}<a href="/app/opportunities/{{ t.opportunity_id }}">{{ t.opportunity_title or ('#' ~ t.opportunity_id) }}</a>{% else %}—{% endif %}</td>
+        <td>{{ t.owner or '—' }}</td>
+        <td>{{ t.due_date or '—' }}</td>
+        <td>
+          <form method="post" action="/app/tasks/{{ t.id }}/status" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf }}">
+            <input type="hidden" name="status" value="done">
+            <button type="submit" class="ghost">done</button>
+          </form>
+          <form method="post" action="/app/tasks/{{ t.id }}/status" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf }}">
+            <input type="hidden" name="status" value="dropped">
+            <button type="submit" class="ghost">drop</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="conf">No open capture tasks. Add them from any opportunity's Capture
+  plan panel — the dossier's recommended next action is one click away.</p>
+  {% endif %}
+</div>
 {% endblock %}
