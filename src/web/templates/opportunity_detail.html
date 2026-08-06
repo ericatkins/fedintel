@@ -207,7 +207,8 @@
   {% endif %}
   {% if d %}
     <div class="tabs">
-      <a href="#intel" class="active">Intelligence</a><a href="#awards">Prior Awards</a>
+      <a href="#intel" class="active">Intelligence</a><a href="#family">Contract Family</a>
+      <a href="#dna">Buyer DNA</a><a href="#awards">Prior Awards</a>
       <a href="#incumbent">Incumbent</a><a href="#funding">Funding</a>
       <a href="#office">Buyer Office</a><a href="#competition">Competition</a>
       <a href="/app/report/{{ o.id }}">Report ↗</a>
@@ -249,6 +250,83 @@
       <span class="conf">{{ d.incumbent_analysis.incumbent_confidence }}/100 ({{ d.incumbent_analysis.confidence_band }})</span></p>
       <ul class="evlist">{% for e in d.incumbent_analysis.supporting_evidence %}<li>{{ e }}</li>{% endfor %}</ul>
       {% for c in d.incumbent_analysis.caveats %}<div class="caveat">{{ c }}</div>{% endfor %}
+    </div>
+
+    {% set fam = d.contract_family or {} %}
+    <div class="panel section" id="family" class="mt12">
+      <h3>Contract family &amp; recompete clock</h3>
+      {% if fam.members %}
+      <div class="timeline">
+        {% for t in fam.timeline %}
+        <span class="tstep {{ 'inferred' if not t.confirmed }}">{{ t.label }}
+          <span class="t">{{ t.date }}{% if not t.confirmed %} · inferred{% endif %}</span>
+        </span>{% if not loop.last %}<span class="tarrow">→</span>{% endif %}
+        {% endfor %}
+      </div>
+      <table><thead><tr><th>Role</th><th>Vendor</th><th>PIID</th><th>Awarded</th>
+        <th>Period</th><th>Obligated</th><th>Link</th></tr></thead>
+      <tbody>{% for m in fam.members %}
+        <tr><td>{{ m.role }}</td><td>{{ m.vendor or '—' }}</td>
+        <td>{{ m.piid or m.source_award_id or '—' }}</td><td>{{ m.award_date or '—' }}</td>
+        <td>{{ m.period_start or '?' }} → {{ m.period_end or '?' }}
+          {% if m.period_months %}({{ m.period_months }}mo){% endif %}</td>
+        <td>{{ '${:,.0f}'.format(m.obligated_amount) if m.obligated_amount else '—' }}</td>
+        <td><span class="badge {{ 'ok' if m.confirmed else 'inc' }}">{{ 'confirmed' if m.confirmed else 'inferred' }}</span>
+          <div class="conf">{{ m.evidence | join('; ') }}</div></td></tr>
+      {% endfor %}</tbody></table>
+      {% set rc = fam.recompete or {} %}
+      {% if rc.estimated_expiration %}
+      <p><strong>Estimated predecessor expiration: {{ rc.estimated_expiration }}</strong>
+        <span class="conf">{{ rc.confidence }}/100 ({{ rc.confidence_band }})</span></p>
+      {% if rc.window %}<p class="conf">Engagement window from {{ rc.window.engage_from }};
+        solicitation historically expected by {{ rc.window.solicitation_expected_by }}.</p>{% endif %}
+      {% for a in rc.assumptions %}<div class="caveat">{{ a }}</div>{% endfor %}
+      {% for c in rc.caveats %}<div class="caveat">{{ c }}</div>{% endfor %}
+      {% else %}
+      <p class="conf">No defensible expiration estimate — the linked awards carry
+        no period-of-performance end dates.</p>
+      {% endif %}
+      {% set vul = fam.vulnerability or {} %}
+      <h3>Incumbent vulnerability — public signals only</h3>
+      <p><strong>{{ vul.assessment }}</strong></p>
+      {% if vul.signals %}
+      <ul class="evlist">{% for s in vul.signals %}<li><strong>{{ s.signal }}</strong> — {{ s.evidence }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% for c in vul.caveats %}<div class="caveat">{{ c }}</div>{% endfor %}
+      {% else %}
+      <p class="conf">No contract family reconstructed — no confirmed-identifier or
+        high-similarity predecessor award found in loaded public data. This does
+        not prove the work is new; award data may be incomplete.</p>
+      {% endif %}
+    </div>
+
+    <div class="panel section" id="dna" class="mt12">
+      <h3>Buyer DNA — this office vs peer offices buying the same category</h3>
+      {% set dna = d.buyer_dna or {} %}
+      {% if dna.status == 'ok' %}
+      <table><thead><tr><th>Behavior</th><th>This office</th><th>Peer baseline</th><th>Read</th></tr></thead>
+      <tbody>{% for c in dna.comparisons %}
+        <tr><td>{{ c.metric }}</td><td>{{ c.office_value_pct }}%</td>
+        <td>{{ c.peer_value_pct }}%</td>
+        <td><span class="badge {{ 'inc' if c.material else 'ok' }}">{{ c.direction }}</span></td></tr>
+      {% endfor %}</tbody></table>
+      {% if dna.labels %}
+      <h3>What this means for this pursuit</h3>
+      <ul class="evlist">{% for l in dna.labels %}
+        <li><strong>{{ l.label }}</strong> ({{ l.evidence }}) — {{ l.implication }}</li>
+      {% endfor %}</ul>
+      {% endif %}
+      <p class="conf">Basis: {{ dna.basis.office_awards }} office awards vs
+        {{ dna.basis.peer_awards }} peer awards.
+        {% for c in dna.caveats %}{{ c }} {% endfor %}</p>
+      {% else %}
+      <p class="conf">Not enough award history to compare this office against its
+        peers ({{ dna.basis.office_awards if dna.basis else 0 }} office awards,
+        {{ dna.basis.peer_awards if dna.basis else 0 }} peer awards;
+        ≥{{ dna.basis.min_required if dna.basis else 8 }} each required).
+        Thin data gets no labels — a confident profile from a handful of awards
+        would be noise.</p>
+      {% endif %}
     </div>
 
     <div class="panel section" id="funding" class="mt12">

@@ -61,8 +61,19 @@ def enrich_one(conn, opp_id: int, profile: dict) -> bool:
         accounts, budget_rows = _cached_funding(cur, opp)
 
         classification = classify(opp, profile)
+        lineage_rows = []
+        if opp.get("solicitation_number"):
+            cur.execute(
+                """select l.stage, l.opportunity_id, o.posted_date
+                   from opportunity_lineage l
+                   join opportunities o on o.id = l.opportunity_id
+                   where l.solicitation_number=%s
+                   order by l.stage_rank, o.posted_date""",
+                (opp["solicitation_number"],))
+            lineage_rows = [{"stage": r[0], "opportunity_id": r[1],
+                             "posted_date": r[2]} for r in cur.fetchall()]
         dossier = build_dossier(opp, classification, awards_office, awards_subtier,
-                                accounts, budget_rows)
+                                accounts, budget_rows, lineage_rows=lineage_rows)
 
         pool = awards_office or awards_subtier
         links = link_awards(opp, identity, pool)

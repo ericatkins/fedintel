@@ -152,8 +152,9 @@ def save_dossier(cur, opportunity_id: int, buyer_office_id: int | None, dossier:
               buyer_profile_json, similar_work_json, last_10_relevant_awards_json,
               incumbent_analysis_json, work_origin_assessment_json, funding_context_json,
               market_size_json, competition_landscape_json, acquisition_pattern_json,
-              pursuit_recommendation_json, data_quality_json, generated_at, updated_at)
-           values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now(),now())
+              pursuit_recommendation_json, data_quality_json,
+              contract_family_json, buyer_dna_json, generated_at, updated_at)
+           values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,now(),now())
            on conflict (opportunity_id) do update set
              buyer_office_id=excluded.buyer_office_id,
              dossier_version=excluded.dossier_version,
@@ -169,6 +170,8 @@ def save_dossier(cur, opportunity_id: int, buyer_office_id: int | None, dossier:
              acquisition_pattern_json=excluded.acquisition_pattern_json,
              pursuit_recommendation_json=excluded.pursuit_recommendation_json,
              data_quality_json=excluded.data_quality_json,
+             contract_family_json=excluded.contract_family_json,
+             buyer_dna_json=excluded.buyer_dna_json,
              generated_at=now(), updated_at=now()""",
         (opportunity_id, buyer_office_id, dossier["dossier_version"],
          dumps(dossier["snapshot"]), dumps(dossier["buyer_profile"]),
@@ -176,7 +179,9 @@ def save_dossier(cur, opportunity_id: int, buyer_office_id: int | None, dossier:
          dumps(dossier["incumbent_analysis"]), dumps(dossier["work_origin_assessment"]),
          dumps(dossier["funding_context"]), dumps(dossier["market_size"]),
          dumps(dossier["competition_landscape"]), dumps(dossier["acquisition_pattern"]),
-         dumps(dossier["pursuit_recommendation"]), dumps(dossier["data_quality"])))
+         dumps(dossier["pursuit_recommendation"]), dumps(dossier["data_quality"]),
+         dumps(dossier.get("contract_family") or {}),
+         dumps(dossier.get("buyer_dna") or {})))
 
 
 def fetch_dossier(cur, opportunity_id: int) -> dict | None:
@@ -185,7 +190,8 @@ def fetch_dossier(cur, opportunity_id: int) -> dict | None:
                   last_10_relevant_awards_json, incumbent_analysis_json,
                   work_origin_assessment_json, funding_context_json, market_size_json,
                   competition_landscape_json, acquisition_pattern_json,
-                  pursuit_recommendation_json, data_quality_json, generated_at
+                  pursuit_recommendation_json, data_quality_json,
+                  contract_family_json, buyer_dna_json, generated_at
            from opportunity_dossiers where opportunity_id=%s""", (opportunity_id,))
     row = cur.fetchone()
     if not row:
@@ -193,7 +199,8 @@ def fetch_dossier(cur, opportunity_id: int) -> dict | None:
     keys = ("snapshot", "buyer_profile", "similar_work", "last_10_relevant_awards",
             "incumbent_analysis", "work_origin_assessment", "funding_context",
             "market_size", "competition_landscape", "acquisition_pattern",
-            "pursuit_recommendation", "data_quality")
+            "pursuit_recommendation", "data_quality", "contract_family",
+            "buyer_dna")
     d = dict(zip(keys, row[:-1], strict=True))
     d["generated_at"] = str(row[-1])
     return d
