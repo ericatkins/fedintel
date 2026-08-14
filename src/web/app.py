@@ -573,15 +573,19 @@ def opportunity_detail(opp_id: int,
         projects=projects,
         weights=store().preference_weights(user["org_id"]))
     tasks = store().list_capture_tasks(user["org_id"], opportunity_id=opp_id)
+    opp_forecasts = (store().forecasts_for_opportunity(opp_id)
+                     if allows(plan, "demand_radar") else None)
     from ..intel.ledger import build_evidence_ledger
-    ledger = build_evidence_ledger(opp, dossier, documents, delegation)
+    ledger = build_evidence_ledger(opp, dossier, documents, delegation,
+                                   forecasts=opp_forecasts)
     history = store().change_history_for_opportunity(opp_id)
     return render("opportunity_detail.html", user=user, o=opp, d=dossier,
                   lineage=lineage, statuses=TRACK_STATUSES, csrf=csrf_for(session),
                   value_est=value_est, delegation=delegation, documents=documents,
                   requirements=requirements, qualification=qualification,
                   proof=proof, decision=decision, days_left=days_left,
-                  tasks=tasks, ledger=ledger, history=history)
+                  tasks=tasks, ledger=ledger, history=history,
+                  opp_forecasts=opp_forecasts)
 
 
 @app.post("/app/opportunities/{opp_id}/status")
@@ -693,6 +697,28 @@ def _csv_safe(value):
     if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t"):
         return "'" + value
     return value
+
+
+@app.get("/app/radar", response_class=HTMLResponse)
+def demand_radar(q: str = Query(default=""),
+                 session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
+    user = require_user(session)
+    require_entitlement(user, "demand_radar")
+    forecasts = store().list_forecasts(q=q.strip() or None)
+    profile = store().get_profile(user["org_id"]) or {}
+    from ..classify import classify
+    scored = []
+    for fc in forecasts:
+        pseudo = {"title": fc.get("title"), "description_text": fc.get("description"),
+                  "naics": fc.get("naics"), "agency": fc.get("agency"),
+                  "office": fc.get("office"), "set_aside": fc.get("set_aside"),
+                  "notice_type": "Special Notice", "response_deadline": None}
+        result = classify(pseudo, profile)
+        scored.append({**fc, "match_score": result.get("score", 0),
+                       "match_reasons": (result.get("reasons") or [])[:3]})
+    scored.sort(key=lambda f: (-f["match_score"],
+                               str(f.get("anticipated_solicitation") or "9999")))
+    return render("radar.html", user=user, forecasts=scored, q=q)
 
 
 @app.get("/app/agencies", response_class=HTMLResponse)

@@ -7,6 +7,7 @@ network. Persistence and candidate fetching live in enrich.py / db_intel.py.
 from datetime import date, datetime, timezone
 
 from .buyer_dna import build_buyer_dna
+from .competitors import build_competitive_teaming
 from .contract_family import build_contract_family
 from .funding import build_funding_context
 from .incumbent import analyze_incumbent, assess_work_origin
@@ -15,7 +16,7 @@ from .market import acquisition_pattern, competition_landscape, market_size
 from .offices import buyer_profile, office_identity_from_opportunity
 from .recommend import recommend
 
-DOSSIER_VERSION = 2
+DOSSIER_VERSION = 3
 
 
 def build_dossier(opp: dict, classification: dict, awards_office: list[dict],
@@ -70,10 +71,12 @@ def build_dossier(opp: dict, classification: dict, awards_office: list[dict],
     family = build_contract_family(opp, links, lineage_rows=lineage_rows,
                                    today=today)
     dna = build_buyer_dna(awards_office, awards_subtier, opp)
+    competitive = build_competitive_teaming(opp, pool, incumbent, today=today)
 
     return {
         "contract_family": family,
         "buyer_dna": dna,
+        "competitive_teaming": competitive,
         "dossier_version": DOSSIER_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "snapshot": _snapshot(opp, classification, rec, origin),

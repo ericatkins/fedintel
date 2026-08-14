@@ -273,3 +273,26 @@ Shipped on branch `claude/fedintel-product-dev-vvdzpf`, migration 011:
 - Next highest-value work, in order: procurement-forecast ingestion (demand
   radar) · competitor/teaming panel · document-version diffing + OCR ·
   funding ladder deepening (budget lines, appropriations status) · grants MVP.
+
+## Demand radar release (Aug 2026, second tranche)
+
+Migration 012:
+
+- **Procurement forecasts**: `adapters/forecasts.py` — DHS APFS API adapter
+  (public JSON, failure-isolated; live validation pending on unrestricted
+  network — fixture-verified) + provenance-enforced operator CSV import for
+  every other agency. CLI: `--refresh-forecasts`, `--import-forecasts`,
+  `--link-forecasts`.
+- **Forecast→opportunity links** (`intel/forecast_link.py`): agency + NAICS +
+  scope similarity + timing; needs score ≥45 AND ≥2 evidence signals.
+- **Demand radar page** (`/app/radar`): active forecasts scored against the
+  org profile; forecast lineage panel on linked opportunities; ledger rows.
+  Entitlement flag `demand_radar` (off for Scout).
+- **Competitive/teaming panel** (`intel/competitors.py`, dossier v3):
+  competitors ranked from actual buyer history with incumbent marked;
+  teaming candidates name the gap filled; subaward/vehicle limitations
+  disclosed on-panel.
+- Docs: DATA_SOURCES.md (source registry + CSV contract),
+  COMPETITIVE_TEAMING_INTEL.md.
+- Remaining next work: document-version diffing + OCR · funding ladder
+  deepening · grants MVP · forecast signals feeding decision-stack dimensions.

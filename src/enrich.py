@@ -326,6 +326,18 @@ def _process_documents_run(conn):
     return process_document_queue(conn, limit=50)["done"]
 
 
+def _refresh_forecasts_run(conn):
+    from .db_forecasts import link_recent_opportunities, refresh_apfs
+    fetched = refresh_apfs(conn)
+    link_recent_opportunities(conn)
+    return fetched
+
+
+def _link_forecasts_run(conn):
+    from .db_forecasts import link_recent_opportunities
+    return link_recent_opportunities(conn)
+
+
 def _civic_job(job_name, fn):
     from . import db
     from .jobs import record_job
@@ -377,5 +389,20 @@ if __name__ == "__main__":
     elif "--import-directed-spending" in sys.argv:
         _civic_import("import_directed_spending_csv",
                       sys.argv[sys.argv.index("--import-directed-spending") + 1])
+    elif "--refresh-forecasts" in sys.argv:
+        _civic_job("refresh_forecasts", _refresh_forecasts_run)
+    elif "--link-forecasts" in sys.argv:
+        _civic_job("link_forecasts", _link_forecasts_run)
+    elif "--import-forecasts" in sys.argv:
+        from . import db
+        from .db_forecasts import import_forecast_csv, link_recent_opportunities
+        _conn = db.get_conn()
+        _conn.autocommit = False
+        try:
+            import_forecast_csv(
+                _conn, sys.argv[sys.argv.index("--import-forecasts") + 1])
+            link_recent_opportunities(_conn)
+        finally:
+            _conn.close()
     else:
         process_queue()

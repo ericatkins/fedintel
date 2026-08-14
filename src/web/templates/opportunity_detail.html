@@ -235,6 +235,29 @@
       (<code>python -m src.enrich --refresh-legislators</code>).</p>
     </div>
   {% endif %}
+  {% if opp_forecasts %}
+    <div class="panel timeline-panel">
+      <h3>Forecast lineage — this requirement was forecast</h3>
+      <ul class="evlist">
+      {% for f in opp_forecasts %}
+        <li><strong>{{ f.title }}</strong>
+          <span class="badge inc">match {{ f.similarity_score }}/100</span>
+          <div class="conf">
+            {{ f.subtier or f.agency }}{% if f.office %} · {{ f.office }}{% endif %}
+            {% if f.anticipated_solicitation %} · anticipated solicitation {{ f.anticipated_solicitation }}{% endif %}
+            {% if f.action_type %} · {{ f.action_type | replace('_', ' ') }}{% endif %}
+            {% if f.incumbent_name %} · stated incumbent: {{ f.incumbent_name }}{% endif %}
+          </div>
+          <div class="conf">Why linked: {{ f.evidence | join('; ') }}</div>
+        </li>
+      {% endfor %}
+      </ul>
+      <p class="conf">A matched forecast means the office planned this buy in
+      advance — the forecast's stated incumbent, value range, and contacts are
+      primary-source capture intelligence. Links are inferred by agency, NAICS,
+      scope, and timing; the evidence line shows exactly why.</p>
+    </div>
+  {% endif %}
   {% if lineage and lineage | length > 1 %}
     <div class="panel timeline-panel">
       <h3>Lifecycle — {{ o.solicitation_number }}</h3>
@@ -252,7 +275,8 @@
   {% if d %}
     <div class="tabs">
       <a href="#intel" class="active">Intelligence</a><a href="#family">Contract Family</a>
-      <a href="#dna">Buyer DNA</a><a href="#awards">Prior Awards</a>
+      <a href="#dna">Buyer DNA</a><a href="#teaming">Teaming</a>
+      <a href="#awards">Prior Awards</a>
       <a href="#incumbent">Incumbent</a><a href="#funding">Funding</a>
       <a href="#office">Buyer Office</a><a href="#competition">Competition</a>
       <a href="/app/report/{{ o.id }}">Report ↗</a>
@@ -370,6 +394,40 @@
         ≥{{ dna.basis.min_required if dna.basis else 8 }} each required).
         Thin data gets no labels — a confident profile from a handful of awards
         would be noise.</p>
+      {% endif %}
+    </div>
+
+    <div class="panel section" id="teaming" class="mt12">
+      <h3>Competitive landscape &amp; teaming candidates</h3>
+      {% set ct = d.competitive_teaming or {} %}
+      {% if ct.status == 'ok' %}
+      <table><thead><tr><th>Vendor</th><th>Strength</th><th>Read</th></tr></thead>
+      <tbody>
+      {% for c in ct.competitors %}
+        <tr><td>{{ c.vendor }}{% if c.is_incumbent %} <span class="badge inc">incumbent</span>{% endif %}</td>
+        <td>{{ c.strength }}/100</td>
+        <td class="ev">{{ c.read }}
+          <details><summary class="conf">evidence</summary>
+            {% for e in c.evidence %}<div class="conf">{{ e }}</div>{% endfor %}
+          </details></td></tr>
+      {% endfor %}
+      </tbody></table>
+      {% if ct.teaming_candidates %}
+      <h3>Teaming candidates</h3>
+      <ul class="evlist">
+      {% for p in ct.teaming_candidates %}
+        <li><strong>{{ p.vendor }}</strong> — fills: {{ p.gap_filled }}
+          <details><summary class="conf">evidence</summary>
+            {% for e in p.evidence %}<div class="conf">{{ e }}</div>{% endfor %}
+          </details></li>
+      {% endfor %}
+      </ul>
+      {% endif %}
+      {% for c in ct.caveats %}<div class="caveat">{{ c }}</div>{% endfor %}
+      {% else %}
+      <p class="conf">No competitive read yet — no award history loaded for this
+      buyer/category. Competitors are named only from actual buyer history,
+      never from NAICS membership alone.</p>
       {% endif %}
     </div>
 

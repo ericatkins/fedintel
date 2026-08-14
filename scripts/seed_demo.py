@@ -141,6 +141,40 @@ DEMO_PROJECTS = [
      "partners": "BigPrime Corp", "source_note": "subcontract agreement"},
 ]
 
+DEMO_FORECASTS = [
+    {"source": "csv_import", "source_record_id": "ARMY-FY26-0042",
+     "agency": "DEPT OF THE ARMY", "subtier": "DEPT OF THE ARMY",
+     "office": "ARMY CONTRACTING COMMAND",
+     "title": "Enterprise Inventory Management System Modernization (Recompete)",
+     "description": "Recompete of inventory management system support: web "
+                    "modernization, dashboards, workflow automation, data "
+                    "migration from the legacy system.",
+     "naics": "541512", "psc": None,
+     "estimated_value_low": 8_000_000.0, "estimated_value_high": 12_000_000.0,
+     "action_type": "recompete", "incumbent_name": "Northstar Data LLC",
+     "contract_vehicle": None, "set_aside": "Total Small Business Set-Aside",
+     "anticipated_solicitation": None,  # filled at seed time (NOW - 45d)
+     "anticipated_award": None, "fiscal_year": 2026,
+     "place_of_performance": "Huntsville, AL",
+     "point_of_contact": "ACC-RSA Small Business Office",
+     "source_url": "https://api.sam.gov/example/army-forecast-fy26"},
+    {"source": "csv_import", "source_record_id": "DHS-FY27-0311",
+     "agency": "DEPT OF HOMELAND SECURITY", "subtier": "CISA",
+     "office": None,
+     "title": "Zero Trust Architecture Implementation Support",
+     "description": "Anticipated requirement for zero trust network security "
+                    "engineering, identity management, and continuous "
+                    "monitoring support.",
+     "naics": "541512", "psc": None,
+     "estimated_value_low": 5_000_000.0, "estimated_value_high": 10_000_000.0,
+     "action_type": "new_requirement", "incumbent_name": None,
+     "contract_vehicle": None, "set_aside": None,
+     "anticipated_solicitation": None,  # filled at seed time (NOW + 200d)
+     "anticipated_award": None, "fiscal_year": 2027,
+     "place_of_performance": "Arlington, VA", "point_of_contact": None,
+     "source_url": "https://api.sam.gov/example/dhs-forecast-fy27"},
+]
+
 DEMO_REQUIREMENTS = [
     ("set_aside", "Total Small Business",
      "This procurement is a Total Small Business Set-Aside under FAR 19.5.", 2),
@@ -251,6 +285,21 @@ def run():
                      p["value_total"], p["scope"], p["technologies"],
                      p["outcomes"], p["partners"], p["source_note"]))
 
+        # procurement forecasts: the Army recompete forecast links to the
+        # flagship opportunity; the DHS one stays future-only on the radar
+        import hashlib as _hashlib
+
+        from src.db_forecasts import upsert_forecast
+        for idx, fc in enumerate(DEMO_FORECASTS):
+            fc = dict(fc)
+            fc["anticipated_solicitation"] = (
+                (NOW - timedelta(days=45)) if idx == 0 else
+                (NOW + timedelta(days=200))).strftime("%Y-%m-%d")
+            fc["raw_json"] = {"demo": True}
+            fc["content_hash"] = _hashlib.sha256(
+                fc["source_record_id"].encode()).hexdigest()
+            upsert_forecast(cur, fc)
+
         # one open capture task so the watchlist tasks table is populated
         cur.execute("select count(*) from capture_tasks where organization_id=%s",
                     (demo_oid,))
@@ -272,6 +321,8 @@ def run():
         from src.matching import refresh_profile_matches_for_org
         conn.commit()
         refresh_profile_matches_for_org(conn, demo_oid)
+        from src.db_forecasts import link_recent_opportunities
+        link_recent_opportunities(conn)
         print("Demo data seeded. Login: demo@fedintel.local / fedintel-demo-password")
     finally:
         conn.close()

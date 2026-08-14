@@ -800,3 +800,43 @@ def test_dossier_v2_sections_round_trip(conn):
         assert fetched["buyer_dna"]["status"] == "insufficient_data"
         cur.execute("delete from opportunities where id=%s", (opp_id,))
     conn.commit()
+
+
+def test_forecast_upsert_and_linking_round_trip(conn):
+    """procurement_forecasts + opportunity_forecast_links in real SQL."""
+    from src.db_forecasts import link_recent_opportunities, upsert_forecast
+    from src.web.store import PgStore
+    store = PgStore.for_connection(conn)
+    with conn.cursor() as cur:
+        fid = upsert_forecast(cur, {
+            "source": "csv_import", "source_record_id": "IT-FC-1",
+            "agency": "DEPT OF THE ARMY", "subtier": "DEPT OF THE ARMY",
+            "office": "ACC", "title": "Inventory software modernization",
+            "description": "dashboards and data migration", "naics": "541512",
+            "action_type": "recompete", "incumbent_name": "Northstar Data LLC",
+            "anticipated_solicitation": "2026-06-01", "fiscal_year": 2026,
+            "source_url": "https://example.gov/forecast",
+            "raw_json": {"t": 1}, "content_hash": "fch1"})
+        # idempotent: same source ids update, never duplicate
+        fid2 = upsert_forecast(cur, {
+            "source": "csv_import", "source_record_id": "IT-FC-1",
+            "agency": "DEPT OF THE ARMY", "title": "Inventory software modernization",
+            "naics": "541512", "raw_json": {"t": 2}, "content_hash": "fch2"})
+        assert fid == fid2
+        cur.execute("""insert into opportunities (source, source_notice_id, title,
+                       agency, naics, posted_date, description_text, content_hash,
+                       raw_json, first_seen_at)
+                       values ('sam','pg-fc-opp','Inventory software modernization',
+                       'DEPT OF THE ARMY','541512','2026-08-01',
+                       'dashboards and data migration','fh','{}', now())
+                       returning id""")
+        opp_id = cur.fetchone()[0]
+    conn.commit()
+    assert link_recent_opportunities(conn) >= 1
+    linked = store.forecasts_for_opportunity(opp_id)
+    assert linked and linked[0]["source_record_id"] == "IT-FC-1"
+    assert linked[0]["evidence"]
+    with conn.cursor() as cur:
+        cur.execute("delete from opportunities where id=%s", (opp_id,))
+        cur.execute("delete from procurement_forecasts where id=%s", (fid,))
+    conn.commit()

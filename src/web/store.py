@@ -861,6 +861,61 @@ class PgStore:
                 "top_agencies", "top_naics", "top_offices")
         return dict(zip(cols, row, strict=True))
 
+    _FORECAST_COLS = ("id", "source", "source_record_id", "agency", "subtier",
+                      "office", "title", "description", "naics", "psc",
+                      "estimated_value_low", "estimated_value_high",
+                      "action_type", "incumbent_name", "contract_vehicle",
+                      "set_aside", "anticipated_solicitation",
+                      "anticipated_award", "fiscal_year",
+                      "place_of_performance", "point_of_contact", "source_url",
+                      "last_seen_at")
+
+    _FORECAST_SELECT = """select id, source, source_record_id, agency, subtier,
+                  office, title, description, naics, psc, estimated_value_low,
+                  estimated_value_high, action_type, incumbent_name,
+                  contract_vehicle, set_aside, anticipated_solicitation,
+                  anticipated_award, fiscal_year, place_of_performance,
+                  point_of_contact, source_url, last_seen_at
+           from procurement_forecasts"""
+
+    def list_forecasts(self, q=None, limit=200):
+        sql = self._FORECAST_SELECT + " where status='active'"
+        params: list = []
+        if q:
+            sql += """ and (title ilike %s or description ilike %s
+                            or naics like %s or agency ilike %s
+                            or subtier ilike %s)"""
+            like = f"%{q}%"
+            params += [like, like, f"{q}%", like, like]
+        sql += """ order by anticipated_solicitation asc nulls last,
+                   last_seen_at desc limit %s"""
+        params.append(limit)
+        with self.cursor() as cur:
+            cur.execute(sql, params)
+            return [dict(zip(self._FORECAST_COLS, r, strict=True))
+                    for r in cur.fetchall()]
+
+    def forecasts_for_opportunity(self, opportunity_id):
+        cols = self._FORECAST_COLS + ("similarity_score", "confidence",
+                                      "evidence")
+        with self.cursor() as cur:
+            cur.execute(
+                """select f.id, f.source, f.source_record_id, f.agency,
+                          f.subtier, f.office, f.title, f.description,
+                          f.naics, f.psc, f.estimated_value_low,
+                          f.estimated_value_high, f.action_type,
+                          f.incumbent_name, f.contract_vehicle, f.set_aside,
+                          f.anticipated_solicitation, f.anticipated_award,
+                          f.fiscal_year, f.place_of_performance,
+                          f.point_of_contact, f.source_url, f.last_seen_at,
+                          l.similarity_score, l.confidence, l.evidence_json
+                   from opportunity_forecast_links l
+                   join procurement_forecasts f on f.id = l.forecast_id
+                   where l.opportunity_id=%s
+                   order by l.similarity_score desc limit 5""",
+                (opportunity_id,))
+            return [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
+
     def get_lineage(self, solicitation_number, exclude_opp_id=None):
         """Lifecycle timeline: every notice sharing this solicitation number."""
         if not solicitation_number:
@@ -1189,6 +1244,20 @@ class MemoryStore:
 
     def get_vendor(self, vendor_id):
         return self.vendors.get(vendor_id)
+
+    def list_forecasts(self, q=None, limit=200):
+        rows = list(getattr(self, "forecasts", []))
+        if q:
+            ql = q.lower()
+            rows = [f for f in rows
+                    if ql in (f.get("title") or "").lower()
+                    or ql in (f.get("description") or "").lower()
+                    or ql in (f.get("agency") or "").lower()]
+        return rows[:limit]
+
+    def forecasts_for_opportunity(self, opportunity_id):
+        return [f for f in getattr(self, "forecast_links", [])
+                if f.get("opportunity_id") == opportunity_id]
 
     def get_lineage(self, solicitation_number, exclude_opp_id=None):
         return self.lineage.get(solicitation_number, [])

@@ -15,16 +15,22 @@ presented as shipped is its own kind of lie.
   amendment/extension/cancellation/protest rates). These need solicitation-to-
   award joins and GAO protest ingestion that aren't built; the shipped metrics
   are the ones public award data supports cleanly.
-- **No procurement-forecast ingestion yet** (Acquisition.gov directory, agency
-  APFS). This is the highest-value missing demand-radar source; adapters need
-  per-agency research because formats differ.
+- **Procurement forecasts cover one API plus operator imports.** The DHS APFS
+  adapter is built and failure-isolated but its live API is unreachable from
+  restricted networks (validated against a fixture only — verify field names
+  on first production run). All other agencies arrive via the provenance-
+  enforced CSV import; no other agency exposes a usable forecast API.
+  Forecast signals do not yet feed the decision stack's dimensions — they
+  render as forecast lineage and the radar page.
 - **Funding ladder is account-level.** The four exclusive funding labels are
   enforced, but President's Budget lines, appropriations bill status, and NDAA
   section links are not ingested; the dossier never claims more than the data
   supports.
-- **No competitor/teaming panel beyond the vendor landscape.** Vendor
-  concentration and repeat-vendor reads exist; ranked likely-competitor and
-  partner-gap recommendations are not yet built.
+- **Competitor/teaming panel is buyer-history-only.** Ranked competitors and
+  gap-filling teaming candidates ship (dossier v3), but they draw solely on
+  prime awards at this buyer: no cross-buyer vendor search, no mentor-protégé
+  or JV data, no vehicle-holder lookup. Size standing is inferred from
+  set-aside award history, not SBA certification data — the panel says so.
 - **Incumbent vulnerability signals are a starter set** (bridge, set-aside
   change, requirement-change language, obligation rate). Protest history, IG/
   GAO findings, and exclusions are not yet ingested.

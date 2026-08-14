@@ -88,6 +88,7 @@ made on a fabricated detail is worse than no product at all.
 | **congress-legislators** (public domain dataset) | All 537 current members: chamber, district, party, DC office contacts, websites, committee assignments, FEC candidate IDs | Weekly |
 | **US Census Geocoder** (free, no key) | Place of performance → congressional district | On enrichment |
 | **FEC** (`api.open.fec.gov/v1`) | Contributions aggregated by reported employer, PAC/committee receipts, committee financial totals, candidate filings per seat | Monthly |
+| **DHS APFS forecasts** (`apfs-cloud.dhs.gov/api`) | Agency procurement forecasts — pre-solicitation demand signals, stated incumbents, anticipated dates | Weekly |
 | **Resend** | Outbound email only (digests, alerts, account mail) | Per send |
 
 ### Operator-imported sources
@@ -95,6 +96,9 @@ made on a fabricated detail is worse than no product at all.
 No free machine-readable feed exists for these, so they arrive as CSV imports
 and **every row must carry a source** or it is rejected.
 
+- **Agency procurement forecasts** — most agencies publish XLSX/CSV on OSDBU
+  pages (acquisition.gov keeps the directory); rows without provenance are
+  rejected. See `docs/DATA_SOURCES.md` for the column contract.
 - **Congressional staff rosters** — House Statement of Disbursements, commercial
   directories. Stored with source and as-of date.
 - **Election results** — MIT Election Lab exports, state Secretary-of-State
@@ -104,7 +108,7 @@ and **every row must carry a source** or it is rejected.
 
 ### Derived intelligence
 
-Computed by Fedintel and stored across 44 tables — not fetched from anywhere:
+Computed by Fedintel and stored across 46 tables — not fetched from anywhere:
 
 Per-organization match scores · buyer-office profiles and behavior labels ·
 vendor profiles (obligations, top agencies/NAICS/offices) · office market stats
@@ -132,6 +136,10 @@ per-dossier evidence ledgers.
   incumbent status, days left, user status
 - Filters (keyword, score, notice type), **saved views** (plan-limited), CSV
   export hardened against spreadsheet formula injection
+- **Demand radar**: agency procurement forecasts scored against your profile —
+  forecasted requirements, stated incumbents, and anticipated solicitation
+  dates months before SAM.gov; matched forecasts render as forecast lineage on
+  the opportunity page
 - **Opportunity detail** — the most important page: a decision strip (verdict,
   deadline, comparable-award estimate, likely incumbent, top risk, next
   action, completeness), the **Capture Decision Stack** (ten separately
@@ -224,7 +232,7 @@ frontend framework.
 | Web | FastAPI + Uvicorn | Backend-for-frontend; the browser never touches the database |
 | Templates | Jinja2, autoescape always on | Server-rendered HTML; no build step |
 | Frontend | Vanilla JS + CSS (~3 files) | No React/bundler; the command palette and keyboard nav are a few hundred lines |
-| Database | PostgreSQL (Supabase-compatible) | 44 tables, 11 ordered migrations, check constraints in the schema |
+| Database | PostgreSQL (Supabase-compatible) | 46 tables, 12 ordered migrations, check constraints in the schema |
 | DB access | `psycopg2` + `ThreadedConnectionPool` | Pooled, one transaction per operation; static/parameterized SQL only |
 | Documents | `pypdf` | Pure-Python, parses structure only, never executes content |
 | Email | Resend | With idempotency keys so retries can't double-send |
@@ -232,7 +240,7 @@ frontend framework.
 | CI | GitHub Actions | ruff, pytest, bandit, pip-audit, secret guard, and a real Postgres integration job |
 
 **Scale of the codebase:** ~10,200 lines of application code, ~3,700 lines of
-tests (223 unit + 25 Postgres integration), 26 templates, 5 runtime dependencies.
+tests (236 unit + 26 Postgres integration), 26 templates, 5 runtime dependencies.
 
 ### Security posture
 
@@ -267,7 +275,7 @@ tests (223 unit + 25 Postgres integration), 26 templates, 5 runtime dependencies
                                    │ pooled, transactional
                     ┌──────────────▼──────────────┐
                     │   PostgreSQL (Supabase)     │
-                    │   44 tables, 11 migrations  │
+                    │   46 tables, 11 migrations  │
                     └──────────────▲──────────────┘
                                    │
         ┌──────────────────────────┴───────────────────────────┐
@@ -364,7 +372,7 @@ db/
 deploy/railway/      7 service configs (1 web + 6 cron)
 docs/                DEPLOYMENT · PUBLIC_BETA_CHECKLIST · DOCUMENT_INTEL ·
                      DELEGATION_INTEL · DISTRICT_INTEL · this file
-tests/               223 unit tests + tests/integration (25, real Postgres)
+tests/               236 unit tests + tests/integration (26, real Postgres)
 ```
 
 ## Running it

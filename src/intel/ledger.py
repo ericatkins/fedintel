@@ -23,7 +23,8 @@ def _row(title, org, identifier=None, url=None, retrieved=None, used_by=None,
 
 def build_evidence_ledger(opp: dict, dossier: dict | None,
                           documents: list[dict] | None,
-                          delegation: list[dict] | None) -> list[dict]:
+                          delegation: list[dict] | None,
+                          forecasts: list[dict] | None = None) -> list[dict]:
     rows = [_row(
         "Opportunity notice", "SAM.gov (GSA)",
         identifier=opp.get("source_notice_id"), url=opp.get("url"),
@@ -80,6 +81,18 @@ def build_evidence_ledger(opp: dict, dossier: dict | None,
                 limitations="Peers share subtier and NAICS, not mission or "
                             "scale.",
             ))
+
+    for fc in forecasts or []:
+        rows.append(_row(
+            f"Procurement forecast: {fc.get('title', '')[:80]}",
+            {"dhs_apfs": "DHS Acquisition Planning Forecast System"}.get(
+                fc.get("source"), "Agency forecast (operator import)"),
+            identifier=fc.get("source_record_id"), url=fc.get("source_url"),
+            retrieved=fc.get("last_seen_at"),
+            used_by=["forecast lineage", "demand radar"],
+            limitations="Forecasts are agency planning statements, not "
+                        "commitments; dates and scope routinely change.",
+        ))
 
     if delegation:
         rows.append(_row(

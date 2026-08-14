@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Demand radar{% endblock %}
+{% block content %}
+<h1>Demand radar — forecasted requirements before they hit SAM.gov</h1>
+<p class="sub">Agency procurement forecasts, scored against your company profile.
+A forecast is the government telling you what it intends to buy — engaging
+here, months before the RFP, is where positioning actually happens.</p>
+
+<form method="get" action="/app/radar" class="filters">
+  <input name="q" value="{{ q }}" placeholder="filter by keyword, agency, NAICS…" autocomplete="off">
+  <button type="submit">Filter</button>
+</form>
+
+{% if forecasts %}
+<table class="kb">
+  <thead><tr><th>Fit</th><th>Anticipated</th><th>Requirement</th><th>Agency</th>
+    <th>NAICS</th><th>Est. value</th><th>Type</th><th>Stated incumbent</th></tr></thead>
+  <tbody>
+  {% for f in forecasts %}
+    <tr>
+      <td><span class="score {{ 's-high' if f.match_score >= 80 else 's-mid' }}">{{ f.match_score }}</span></td>
+      <td>{{ f.anticipated_solicitation or ('FY' ~ f.fiscal_year if f.fiscal_year else '—') }}</td>
+      <td>{{ f.title }}
+        <details><summary class="conf">details</summary>
+          <div class="conf">{{ f.description or 'no description provided' }}</div>
+          {% if f.match_reasons %}<div class="conf">Why this fit: {{ f.match_reasons | join('; ') }}</div>{% endif %}
+          {% if f.point_of_contact %}<div class="conf">Contact: {{ f.point_of_contact }}</div>{% endif %}
+          <div class="conf">Source: {{ f.source }} · record {{ f.source_record_id }}
+            · last seen {{ f.last_seen_at }}</div>
+        </details></td>
+      <td>{{ f.subtier or f.agency or '—' }}{% if f.office %}<div class="conf">{{ f.office }}</div>{% endif %}</td>
+      <td>{{ f.naics or '—' }}</td>
+      <td>{% if f.estimated_value_low %}${{ '{:,.0f}'.format(f.estimated_value_low) }}{% if f.estimated_value_high and f.estimated_value_high != f.estimated_value_low %}–${{ '{:,.0f}'.format(f.estimated_value_high) }}{% endif %}{% else %}—{% endif %}</td>
+      <td>{{ (f.action_type or '—') | replace('_', ' ') }}</td>
+      <td>{{ f.incumbent_name or '—' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="conf">Forecasts are agency planning statements, not commitments —
+dates slip and requirements merge or vanish. "Stated incumbent" appears only
+when the agency's own forecast names one. When a forecast converts to a posted
+notice, the link appears on that opportunity's page.</p>
+{% else %}
+<div class="panel">
+  <h3>No forecasts loaded{% if q %} for this filter{% endif %}</h3>
+  <p class="conf">Load forecast data with
+  <code>python -m src.enrich --refresh-forecasts</code> (DHS APFS API) or
+  <code>python -m src.enrich --import-forecasts path/to/file.csv</code>
+  (operator import for agencies that publish XLSX/CSV — see
+  docs/DATA_SOURCES.md for the required columns).</p>
+</div>
+{% endif %}
+{% endblock %}
