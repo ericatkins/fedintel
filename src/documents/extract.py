@@ -18,7 +18,7 @@ def extract_text(content: bytes, filename: str = "") -> dict:
     if filename.lower().endswith(".txt"):
         text = content.decode("utf-8", errors="replace")[:MAX_CHARS]
         return {"status": "extracted", "text": text, "page_count": 1,
-                "pages": [(1, text)]}
+                "pages": [(1, text)], "method": "text"}
     try:
         from pypdf import PdfReader
         reader = PdfReader(io.BytesIO(content), strict=False)
@@ -35,12 +35,23 @@ def extract_text(content: bytes, filename: str = "") -> dict:
                 break
         text = "\n".join(t for _, t in pages)[:MAX_CHARS]
         if not text.strip():
-            # Scanned/image PDF: honest status, no silent empty success.
+            # Scanned/image PDF: try bounded OCR; honest status either way.
+            from .ocr import ocr_available, ocr_pdf
+            if ocr_available():
+                ocr = ocr_pdf(content, total_pages=len(reader.pages))
+                if ocr["status"] == "extracted":
+                    return {"status": "extracted", "text": ocr["text"],
+                            "pages": ocr["pages"],
+                            "page_count": len(reader.pages),
+                            "method": "ocr", "ocr_pages": ocr["ocr_pages"],
+                            "note": ocr["note"]}
+                return {"status": ocr["status"], "text": "", "pages": [],
+                        "page_count": len(reader.pages), "note": ocr["note"]}
             return {"status": "unsupported", "text": "", "pages": [],
                     "page_count": len(reader.pages),
                     "note": "no embedded text (likely a scanned image; OCR not enabled)"}
         return {"status": "extracted", "text": text, "pages": pages,
-                "page_count": len(reader.pages)}
+                "page_count": len(reader.pages), "method": "pypdf"}
     except Exception as exc:  # noqa: BLE001 — malformed PDFs are expected input
         log("document_extract_error", error=type(exc).__name__)
         return {"status": "failed", "text": "", "page_count": 0, "pages": [],

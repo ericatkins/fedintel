@@ -840,3 +840,34 @@ def test_forecast_upsert_and_linking_round_trip(conn):
         cur.execute("delete from opportunities where id=%s", (opp_id,))
         cur.execute("delete from procurement_forecasts where id=%s", (fid,))
     conn.commit()
+
+
+def test_grant_upsert_round_trip_and_listing(conn):
+    """grant_opportunities: idempotent upsert + store listing in real SQL."""
+    from src.db_grants import upsert_grant
+    from src.web.store import PgStore
+    store = PgStore.for_connection(conn)
+    rec = {"source": "grants_gov", "source_grant_id": "IT-GR-1",
+           "opportunity_number": "TEST-2026-01", "title": "Test Grant",
+           "agency_code": "TEST", "agency_name": "Test Agency",
+           "opportunity_status": "posted", "posted_date": "2026-07-01",
+           "close_date": "2026-10-01", "award_floor": 1000,
+           "award_ceiling": 5000, "expected_awards": 3, "total_funding": 15000,
+           "funding_instrument": "grant", "category": None,
+           "cost_sharing": False, "description_text": "d",
+           "source_url": "https://grants.gov/x",
+           "assistance_listings": ["10.001"],
+           "eligible_applicants": ["nonprofits"],
+           "raw_json": {"v": 1}, "content_hash": "gh1"}
+    with conn.cursor() as cur:
+        gid = upsert_grant(cur, rec)
+        gid2 = upsert_grant(cur, {**rec, "title": "Test Grant (rev)",
+                                  "content_hash": "gh2"})
+        assert gid == gid2
+    conn.commit()
+    rows = store.list_grants(q="Test Grant")
+    assert rows and rows[0]["title"] == "Test Grant (rev)"
+    assert rows[0]["assistance_listings"] == ["10.001"]
+    with conn.cursor() as cur:
+        cur.execute("delete from grant_opportunities where id=%s", (gid,))
+    conn.commit()

@@ -916,6 +916,36 @@ class PgStore:
                 (opportunity_id,))
             return [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
 
+    _GRANT_COLS = ("id", "source", "source_grant_id", "opportunity_number",
+                   "title", "agency_code", "agency_name",
+                   "assistance_listings", "opportunity_status", "posted_date",
+                   "close_date", "award_floor", "award_ceiling",
+                   "expected_awards", "total_funding", "funding_instrument",
+                   "eligible_applicants", "cost_sharing", "description_text",
+                   "source_url", "last_seen_at")
+
+    def list_grants(self, q=None, limit=200):
+        sql = """select id, source, source_grant_id, opportunity_number, title,
+                        agency_code, agency_name, assistance_listings,
+                        opportunity_status, posted_date, close_date,
+                        award_floor, award_ceiling, expected_awards,
+                        total_funding, funding_instrument, eligible_applicants,
+                        cost_sharing, description_text, source_url, last_seen_at
+                 from grant_opportunities
+                 where opportunity_status in ('posted', 'forecasted')"""
+        params: list = []
+        if q:
+            sql += """ and (title ilike %s or description_text ilike %s
+                            or agency_name ilike %s)"""
+            like = f"%{q}%"
+            params += [like, like, like]
+        sql += " order by close_date asc nulls last, id desc limit %s"
+        params.append(limit)
+        with self.cursor() as cur:
+            cur.execute(sql, params)
+            return [dict(zip(self._GRANT_COLS, r, strict=True))
+                    for r in cur.fetchall()]
+
     def get_lineage(self, solicitation_number, exclude_opp_id=None):
         """Lifecycle timeline: every notice sharing this solicitation number."""
         if not solicitation_number:
@@ -1244,6 +1274,15 @@ class MemoryStore:
 
     def get_vendor(self, vendor_id):
         return self.vendors.get(vendor_id)
+
+    def list_grants(self, q=None, limit=200):
+        rows = list(getattr(self, "grants", []))
+        if q:
+            ql = q.lower()
+            rows = [g for g in rows
+                    if ql in (g.get("title") or "").lower()
+                    or ql in (g.get("agency_name") or "").lower()]
+        return rows[:limit]
 
     def list_forecasts(self, q=None, limit=200):
         rows = list(getattr(self, "forecasts", []))

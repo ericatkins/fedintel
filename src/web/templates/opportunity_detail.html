@@ -175,7 +175,9 @@
       {% for doc in documents %}
         <li>{{ doc.filename or 'attachment' }}
           <span class="conf">{{ doc.doc_kind or 'other' }}{% if doc.page_count %} · {{ doc.page_count }}p{% endif %}
-          · {{ doc.fetch_status }}{% if doc.fetch_error %} ({{ doc.fetch_error }}){% endif %}</span></li>
+          · {{ doc.fetch_status }}
+          {%- if doc.extraction_method == 'ocr' %} · <span class="badge inc" title="machine-read from scanned images; reduced text reliability">OCR {{ doc.ocr_pages }}/{{ doc.page_count }}p</span>{% endif %}
+          {%- if doc.fetch_error %} ({{ doc.fetch_error }}){% endif %}</span></li>
       {% endfor %}
       </ul>
     </div>
@@ -459,6 +461,21 @@
       <h3>Funding context</h3>
       <p><strong>{{ d.funding_context.label }}</strong>
       <span class="conf">{{ d.funding_context.confidence }}/100</span></p>
+      {% set ladder = d.funding_context.ladder %}
+      {% if ladder %}
+      <table><thead><tr><th>FY</th><th>Requested</th><th>Available</th>
+        <th>Obligated</th><th>Rate</th><th>YoY</th></tr></thead>
+      <tbody>{% for r in ladder.rows %}
+        <tr><td>FY{{ r.fiscal_year }}</td>
+        <td>{{ '${:,.0f}'.format(r.requested) if r.requested else '—' }}</td>
+        <td>{{ '${:,.0f}'.format(r.available) if r.available else '—' }}</td>
+        <td>{{ '${:,.0f}'.format(r.obligated) if r.obligated else '—' }}</td>
+        <td>{{ (r.obligation_rate_pct ~ '%') if r.obligation_rate_pct is not none else '—' }}</td>
+        <td>{{ ('%+d%%' % r.yoy_available_pct) if r.yoy_available_pct is not none else '—' }}</td></tr>
+      {% endfor %}</tbody></table>
+      {% for n in ladder.notes %}<p class="conf">{{ n }}</p>{% endfor %}
+      {% for c in ladder.caveats %}<div class="caveat">{{ c }}</div>{% endfor %}
+      {% endif %}
       {% for c in d.funding_context.caveats %}<div class="caveat">{{ c }}</div>{% endfor %}
     </div>
 

@@ -88,6 +88,7 @@ made on a fabricated detail is worse than no product at all.
 | **congress-legislators** (public domain dataset) | All 537 current members: chamber, district, party, DC office contacts, websites, committee assignments, FEC candidate IDs | Weekly |
 | **US Census Geocoder** (free, no key) | Place of performance → congressional district | On enrichment |
 | **FEC** (`api.open.fec.gov/v1`) | Contributions aggregated by reported employer, PAC/committee receipts, committee financial totals, candidate filings per seat | Monthly |
+| **Grants.gov** (`api.grants.gov/v1/api`) | Grant opportunities and forecasts — the separate grants vertical | Weekly |
 | **DHS APFS forecasts** (`apfs-cloud.dhs.gov/api`) | Agency procurement forecasts — pre-solicitation demand signals, stated incumbents, anticipated dates | Weekly |
 | **Resend** | Outbound email only (digests, alerts, account mail) | Per send |
 
@@ -108,7 +109,7 @@ and **every row must carry a source** or it is rejected.
 
 ### Derived intelligence
 
-Computed by Fedintel and stored across 46 tables — not fetched from anywhere:
+Computed by Fedintel and stored across 47 tables — not fetched from anywhere:
 
 Per-organization match scores · buyer-office profiles and behavior labels ·
 vendor profiles (obligations, top agencies/NAICS/offices) · office market stats
@@ -140,6 +141,9 @@ per-dossier evidence ledgers.
   forecasted requirements, stated incumbents, and anticipated solicitation
   dates months before SAM.gov; matched forecasts render as forecast lineage on
   the opportunity page
+- **Grants** (separate vertical): Grants.gov opportunities with eligibility,
+  assistance listings, award ranges, and cost sharing — contract scoring is
+  never applied to grants, and keyword relevance is labeled as exactly that
 - **Opportunity detail** — the most important page: a decision strip (verdict,
   deadline, comparable-award estimate, likely incumbent, top risk, next
   action, completeness), the **Capture Decision Stack** (ten separately
@@ -153,7 +157,9 @@ per-dossier evidence ledgers.
 - Terminal-style UX: ⌘K command palette, `j`/`k` navigation, dark-first, dense
 
 ### Document intelligence *(Pro / Team)*
-- Automatic attachment fetch and text extraction
+- Automatic attachment fetch and text extraction, with **bounded OCR** for
+  scanned PDFs (first 20 pages, hard timeouts; OCR-derived requirements are
+  confidence-capped and method-tagged)
 - **Compliance matrix** from 42 deterministic rules across 11 requirement
   types: clearances, contract vehicles, set-asides, certifications, wage
   regimes, evaluation approach, submission mechanics, personnel, place-of-work,
@@ -232,7 +238,7 @@ frontend framework.
 | Web | FastAPI + Uvicorn | Backend-for-frontend; the browser never touches the database |
 | Templates | Jinja2, autoescape always on | Server-rendered HTML; no build step |
 | Frontend | Vanilla JS + CSS (~3 files) | No React/bundler; the command palette and keyboard nav are a few hundred lines |
-| Database | PostgreSQL (Supabase-compatible) | 46 tables, 12 ordered migrations, check constraints in the schema |
+| Database | PostgreSQL (Supabase-compatible) | 47 tables, 13 ordered migrations, check constraints in the schema |
 | DB access | `psycopg2` + `ThreadedConnectionPool` | Pooled, one transaction per operation; static/parameterized SQL only |
 | Documents | `pypdf` | Pure-Python, parses structure only, never executes content |
 | Email | Resend | With idempotency keys so retries can't double-send |
@@ -240,7 +246,7 @@ frontend framework.
 | CI | GitHub Actions | ruff, pytest, bandit, pip-audit, secret guard, and a real Postgres integration job |
 
 **Scale of the codebase:** ~10,200 lines of application code, ~3,700 lines of
-tests (236 unit + 26 Postgres integration), 26 templates, 5 runtime dependencies.
+tests (258 unit + 27 Postgres integration), 26 templates, 5 runtime dependencies.
 
 ### Security posture
 
@@ -256,7 +262,9 @@ tests (236 unit + 26 Postgres integration), 26 templates, 5 runtime dependencies
   no redirects; sanitized filenames
 - `organization_id` is derived **only** from the session or a signed token,
   never accepted from the client
-- Static/parameterized SQL only, with **zero bandit suppressions** as policy
+- Static/parameterized SQL only; bandit suppressions require an inline
+  written justification (currently two, both for the sandboxed OCR
+  subprocess calls in `src/documents/ocr.py`)
 - Logs redact secrets and query strings; API keys never reach the browser
 - Optional intelligence API refuses to import unless explicitly enabled, and
   then demands an admin token on every endpoint
@@ -275,7 +283,7 @@ tests (236 unit + 26 Postgres integration), 26 templates, 5 runtime dependencies
                                    │ pooled, transactional
                     ┌──────────────▼──────────────┐
                     │   PostgreSQL (Supabase)     │
-                    │   46 tables, 11 migrations  │
+                    │   47 tables, 11 migrations  │
                     └──────────────▲──────────────┘
                                    │
         ┌──────────────────────────┴───────────────────────────┐
@@ -372,7 +380,7 @@ db/
 deploy/railway/      7 service configs (1 web + 6 cron)
 docs/                DEPLOYMENT · PUBLIC_BETA_CHECKLIST · DOCUMENT_INTEL ·
                      DELEGATION_INTEL · DISTRICT_INTEL · this file
-tests/               236 unit tests + tests/integration (26, real Postgres)
+tests/               258 unit tests + tests/integration (27, real Postgres)
 ```
 
 ## Running it
@@ -395,12 +403,12 @@ inviting real users.
 Named honestly, because a roadmap presented as shipped is its own kind of lie
 (full register: `docs/KNOWN_LIMITATIONS.md`):
 
-OCR for scanned PDFs · document-version diffing (notice-field amendment
-history IS built) · contracting-officer extraction · procurement-forecast
-ingestion · protest/IG/GAO signal ingestion · competitor & teaming
-recommendation panel · grants vertical · Stripe billing (entitlement flags are
-in place and enforced; only payment collection is missing) · Sentry · state
-and local opportunity sources (Bonfire/BidNet) · agency subtier splits (FBI
-within DOJ) · vertical packs for non-technical industries · grounded AI
-summaries · win probability (deliberately withheld until outcomes exist to
-calibrate it).
+document-version diffing (notice-field amendment history and lineage-stage
+requirement deltas ARE built) · contracting-officer extraction · protest/IG/
+GAO signal ingestion · grant readiness scoring and recipient intelligence
+(the grants foundation IS built) · appropriations-bill status in the funding
+ladder · Stripe billing (entitlement flags are in place and enforced; only
+payment collection is missing) · Sentry · state and local opportunity sources
+(Bonfire/BidNet) · agency subtier splits (FBI within DOJ) · vertical packs
+for non-technical industries · grounded AI summaries · win probability
+(deliberately withheld until outcomes exist to calibrate it).

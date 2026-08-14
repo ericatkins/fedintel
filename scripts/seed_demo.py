@@ -226,7 +226,22 @@ def run():
                 office_id = db_intel.upsert_buyer_office(cur, identity, conf)
                 awards_office, awards_subtier = db_intel.fetch_candidate_awards(
                     cur, identity, opp.get("naics"))
-                dossier = build_dossier(opp, result, awards_office, awards_subtier, [], [])
+                budget_rows = [
+                    {"federal_account_code": "097-2035",
+                     "federal_account_name": "Other Procurement, Army",
+                     "fiscal_year": 2025, "budgetary_resources": 2_400_000_000,
+                     "obligations": 2_150_000_000,
+                     "president_budget_amount": 0, "source": "usaspending",
+                     "raw_json": {}},
+                    {"federal_account_code": "097-2035",
+                     "federal_account_name": "Other Procurement, Army",
+                     "fiscal_year": 2026, "budgetary_resources": 2_760_000_000,
+                     "obligations": 1_100_000_000,
+                     "president_budget_amount": 2_900_000_000,
+                     "source": "usaspending", "raw_json": {}},
+                ]
+                dossier = build_dossier(opp, result, awards_office,
+                                        awards_subtier, [], budget_rows)
                 db_intel.save_dossier(cur, opp_id, office_id, dossier)
                 db_intel.mark_enrichment(cur, opp_id, "done")
         # subscription + per-org matches: the full multi-user workflow is visible
@@ -299,6 +314,47 @@ def run():
             fc["content_hash"] = _hashlib.sha256(
                 fc["source_record_id"].encode()).hexdigest()
             upsert_forecast(cur, fc)
+
+        # grants vertical: two demo grant opportunities
+        from src.db_grants import upsert_grant
+        for g in (
+            {"source": "csv_import", "source_grant_id": "DEMO-GR-1",
+             "opportunity_number": "USDA-NIFA-2026-01",
+             "title": "Rural Data Infrastructure Grants",
+             "agency_code": "USDA-NIFA",
+             "agency_name": "National Institute of Food and Agriculture",
+             "opportunity_status": "posted",
+             "posted_date": (NOW - timedelta(days=20)).strftime("%Y-%m-%d"),
+             "close_date": (NOW + timedelta(days=60)).strftime("%Y-%m-%d"),
+             "award_floor": 100_000, "award_ceiling": 750_000,
+             "expected_awards": 12, "total_funding": 9_000_000,
+             "funding_instrument": "grant", "category": None,
+             "cost_sharing": True,
+             "description_text": "Data infrastructure and dashboards for "
+                                 "rural research networks.",
+             "source_url": "https://grants.gov/search-results-detail/demo1",
+             "assistance_listings": ["10.310"],
+             "eligible_applicants": ["institutions of higher education",
+                                     "nonprofits"],
+             "raw_json": {"demo": True}, "content_hash": "grdemo1"},
+            {"source": "csv_import", "source_grant_id": "DEMO-GR-2",
+             "opportunity_number": "DHS-CISA-2027-05",
+             "title": "State and Local Cybersecurity Modernization",
+             "agency_code": "DHS-CISA", "agency_name": "CISA",
+             "opportunity_status": "forecasted", "posted_date": None,
+             "close_date": None, "award_floor": None,
+             "award_ceiling": 2_000_000, "expected_awards": 30,
+             "total_funding": 60_000_000,
+             "funding_instrument": "cooperative_agreement", "category": None,
+             "cost_sharing": False,
+             "description_text": "Forecasted: cybersecurity modernization "
+                                 "support for state and local governments.",
+             "source_url": "https://grants.gov/search-results-detail/demo2",
+             "assistance_listings": ["97.137"],
+             "eligible_applicants": ["state governments", "local governments"],
+             "raw_json": {"demo": True}, "content_hash": "grdemo2"},
+        ):
+            upsert_grant(cur, g)
 
         # one open capture task so the watchlist tasks table is populated
         cur.execute("select count(*) from capture_tasks where organization_id=%s",

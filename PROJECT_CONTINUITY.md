@@ -296,3 +296,30 @@ Migration 012:
   COMPETITIVE_TEAMING_INTEL.md.
 - Remaining next work: document-version diffing + OCR · funding ladder
   deepening · grants MVP · forecast signals feeding decision-stack dimensions.
+
+## Document, funding, and grants release (Aug 2026, third tranche)
+
+Migration 013:
+
+- **OCR for scanned PDFs** (`documents/ocr.py`): tesseract + pdftoppm
+  fallback when pypdf finds no embedded text. Bounded (20 pages, 150 DPI,
+  per-page and total timeouts), sandboxed subprocesses (absolute paths, no
+  shell, private tempdir), optional (binaries absent → honest `unsupported`;
+  FEDINTEL_OCR=0 disables). OCR-derived requirements confidence-capped at 55
+  and method-tagged `+ocr`; page coverage stated in the UI and ledger. Two
+  justified `#nosec` markers — the only bandit suppressions in the codebase.
+- **Funding ladder** (`intel/funding.build_funding_ladder`): per-FY
+  requested / available / obligated rows with obligation rates and YoY from
+  cached funding_accounts; disciplined notes ("a request is not an
+  appropriation"); rendered in the funding panel. Appropriations bill status
+  is still not ingested.
+- **Grants foundation** (`adapters/grants_gov.py`, `db_grants.py`,
+  `/app/grants`): separate vertical, contract scoring never applied;
+  Grants.gov search2 + fetchOpportunity adapter (fixture-verified, live host
+  blocked in this environment); keyword relevance honestly labeled as not an
+  eligibility/readiness assessment. Entitlement flag `grants_intel`.
+  CLI: `--refresh-grants`. See docs/GRANTS_INTEL.md for what is deliberately
+  not built yet.
+- Remaining next work: grant readiness + recipient intelligence ·
+  appropriations-bill status for the ladder · protest/IG/GAO signals ·
+  golden-set evaluation against live SAM.gov (needs SAM_API_KEY + network).

@@ -731,6 +731,27 @@ def demand_radar(q: str = Query(default=""),
     return render("radar.html", user=user, forecasts=scored, q=q)
 
 
+@app.get("/app/grants", response_class=HTMLResponse)
+def grants_page(q: str = Query(default=""),
+                session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
+    user = require_user(session)
+    require_entitlement(user, "grants_intel")
+    grants = store().list_grants(q=q.strip() or None)
+    profile = store().get_profile(user["org_id"]) or {}
+    terms = set()
+    for key in ("keywords_boost", "capabilities", "industries"):
+        for item in profile.get(key) or []:
+            for word in str(item).lower().split():
+                if len(word) >= 4:
+                    terms.add(word)
+    for g in grants:
+        text = f"{g.get('title', '')} {g.get('description_text', '')}".lower()
+        g["matched_terms"] = sorted(t for t in terms if t in text)[:5]
+    grants.sort(key=lambda g: (str(g.get("close_date") or "9999"),
+                               -len(g["matched_terms"])))
+    return render("grants.html", user=user, grants=grants, q=q)
+
+
 @app.get("/app/agencies", response_class=HTMLResponse)
 def agencies(session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
     user = require_user(session)

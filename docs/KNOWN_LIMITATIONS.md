@@ -22,10 +22,11 @@ presented as shipped is its own kind of lie.
   enforced CSV import; no other agency exposes a usable forecast API.
   Forecast signals do not yet feed the decision stack's dimensions — they
   render as forecast lineage and the radar page.
-- **Funding ladder is account-level.** The four exclusive funding labels are
-  enforced, but President's Budget lines, appropriations bill status, and NDAA
-  section links are not ingested; the dossier never claims more than the data
-  supports.
+- **Funding ladder is account-level.** The dossier now shows per-FY
+  requested / available / obligated rows with rates and YoY deltas from
+  cached USAspending accounts, but appropriations bill status (House/Senate
+  marks, enacted), apportionments, and NDAA section links are not ingested;
+  the ladder's own caveat says it never proves the opportunity is funded.
 - **Competitor/teaming panel is buyer-history-only.** Ranked competitors and
   gap-filling teaming candidates ship (dossier v3), but they draw solely on
   prime awards at this buyer: no cross-buyer vendor search, no mentor-protégé
@@ -40,12 +41,16 @@ presented as shipped is its own kind of lie.
 
 ## Product
 
-- **Grants remain unbuilt** as a vertical (Grants.gov/Assistance Listings
-  adapters not present). Kept deliberately separate rather than shoehorned
-  into contract logic.
-- **OCR for scanned PDFs** is still missing; scanned attachments show
-  `unsupported`/`failed` extraction status and are flagged in the evidence
-  ledger.
+- **Grants ship as a foundation, not a product** (migration 013): Grants.gov
+  adapter (fixture-verified; live API blocked in restricted networks), grants
+  page with honest keyword-relevance labeling. Readiness scoring, grantmaker
+  profiles, recipient intelligence, Single Audit data, and the compliance
+  calendar are not built — see docs/GRANTS_INTEL.md.
+- **OCR ships bounded, not universal**: first 20 pages at 150 DPI with hard
+  timeouts; requirements mined from OCR text are confidence-capped at 55 and
+  method-tagged. Requires `pdftoppm` + `tesseract` on the host (absent →
+  scanned files keep the honest `unsupported` status). CI runners without
+  the binaries skip the live OCR tests.
 - **Amendment intelligence covers notice fields**, not document-version
   diffing (added/removed requirement text between attachment versions).
 - **No Stripe billing** — plans and server-side entitlements are enforced;

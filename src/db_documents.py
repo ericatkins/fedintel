@@ -66,19 +66,26 @@ def process_document(conn, document_id: int, opportunity_id: int, url: str) -> b
     text = extracted.get("text", "")
     kind = classify_document(result.get("filename", ""), text)
     requirements = extract_requirements(extracted.get("pages") or [])
+    if extracted.get("method") == "ocr" and requirements:
+        # Machine-read text from images: cap confidence, tag the method so
+        # every evidence drawer shows the reduced reliability.
+        from .documents.ocr import cap_requirements
+        requirements = cap_requirements(requirements)
     with conn.cursor() as cur:
         cur.execute(
             """update opportunity_documents
                  set fetch_status=%s, filename=%s, content_type=%s, byte_size=%s,
                      sha256=%s, page_count=%s, text_chars=%s, doc_kind=%s,
                      extracted_text=%s, fetch_error=%s,
+                     extraction_method=%s, ocr_pages=%s,
                      fetched_at=now(), extracted_at=now()
                where id=%s""",
             ("extracted" if extracted["status"] == "extracted" else extracted["status"],
              result.get("filename"), result.get("content_type"),
              result.get("byte_size"), result.get("sha256"),
              extracted.get("page_count"), len(text), kind, text,
-             (extracted.get("note") or "")[:300] or None, document_id))
+             (extracted.get("note") or "")[:300] or None,
+             extracted.get("method"), extracted.get("ocr_pages"), document_id))
         if requirements:
             store_requirements(cur, opportunity_id, document_id, requirements)
     conn.commit()
@@ -138,9 +145,11 @@ def requirements_for(cur, opportunity_id: int) -> list[dict]:
 def documents_for(cur, opportunity_id: int) -> list[dict]:
     cur.execute(
         """select id, filename, doc_kind, page_count, byte_size, fetch_status,
-                  fetch_error, source_url, extracted_at
+                  fetch_error, source_url, extracted_at, extraction_method,
+                  ocr_pages
            from opportunity_documents where opportunity_id=%s order by id""",
         (opportunity_id,))
     cols = ("id", "filename", "doc_kind", "page_count", "byte_size",
-            "fetch_status", "fetch_error", "source_url", "extracted_at")
+            "fetch_status", "fetch_error", "source_url", "extracted_at",
+            "extraction_method", "ocr_pages")
     return [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]

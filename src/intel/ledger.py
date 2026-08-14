@@ -44,9 +44,14 @@ def build_evidence_ledger(opp: dict, dossier: dict | None,
             used_by=(["compliance matrix", "qualification verdict"]
                      if doc.get("fetch_status") == "extracted"
                      else [f"not yet usable (status: {doc.get('fetch_status')})"]),
-            limitations=None if doc.get("fetch_status") == "extracted" else
-                        "Text not extracted — requirements from this file are "
-                        "not in the matrix.",
+            limitations=(
+                f"OCR-extracted ({doc.get('ocr_pages')} of "
+                f"{doc.get('page_count')} pages machine-read) — text "
+                "reliability reduced; requirement confidence capped."
+                if doc.get("extraction_method") == "ocr"
+                else None if doc.get("fetch_status") == "extracted"
+                else "Text not extracted — requirements from this file are "
+                     "not in the matrix."),
         ))
 
     if dossier:

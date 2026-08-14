@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Fedintel — Grants{% endblock %}
+{% block content %}
+<h1>Grant opportunities</h1>
+<p class="sub">A separate vertical: grants share agencies and programs with
+contracts, but the decision model is different — eligibility, mission
+alignment, cost sharing, and readiness, not incumbents and price-to-win.
+Contract scoring is never applied here.</p>
+
+<form method="get" action="/app/grants" class="filters">
+  <input name="q" value="{{ q }}" placeholder="filter by keyword or agency…" autocomplete="off">
+  <button type="submit">Filter</button>
+</form>
+
+{% if grants %}
+<table class="kb">
+  <thead><tr><th>Closes</th><th>Opportunity</th><th>Agency</th><th>Awards</th>
+    <th>Instrument</th><th>Cost share</th><th>Keyword relevance</th></tr></thead>
+  <tbody>
+  {% for g in grants %}
+    <tr>
+      <td>{{ g.close_date or '—' }}
+        {% if g.opportunity_status == 'forecasted' %}<div><span class="badge inc">forecasted</span></div>{% endif %}</td>
+      <td>{{ g.title }}
+        <details><summary class="conf">details</summary>
+          <div class="conf">{{ (g.description_text or 'no synopsis loaded')[:600] }}</div>
+          {% if g.eligible_applicants %}<div class="conf">Eligible: {{ g.eligible_applicants | join('; ') }}</div>{% endif %}
+          {% if g.assistance_listings %}<div class="conf">Assistance listing(s): {{ g.assistance_listings | join(', ') }}</div>{% endif %}
+          <div class="conf">{{ g.opportunity_number or g.source_grant_id }} · {{ g.source }} · last seen {{ g.last_seen_at }}</div>
+        </details></td>
+      <td>{{ g.agency_name or g.agency_code or '—' }}</td>
+      <td>{% if g.award_ceiling %}up to ${{ '{:,.0f}'.format(g.award_ceiling) }}{% if g.expected_awards %} × ~{{ g.expected_awards }}{% endif %}{% else %}—{% endif %}</td>
+      <td>{{ (g.funding_instrument or '—') | replace('_', ' ') }}</td>
+      <td>{% if g.cost_sharing is true %}required{% elif g.cost_sharing is false %}no{% else %}—{% endif %}</td>
+      <td class="conf">{% if g.matched_terms %}{{ g.matched_terms | join(', ') }}{% else %}none{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="conf">"Keyword relevance" lists profile terms found in the grant text —
+it is <strong>not</strong> an eligibility or readiness assessment. Grant-specific
+readiness (applicant type, match requirements, evidence, compliance) is on the
+roadmap; until it ships, read the NOFO.</p>
+{% else %}
+<div class="panel">
+  <h3>No grant opportunities loaded{% if q %} for this filter{% endif %}</h3>
+  <p class="conf">Load grants with <code>python -m src.enrich --refresh-grants</code>
+  (Grants.gov public API). See docs/GRANTS_INTEL.md.</p>
+</div>
+{% endif %}
+{% endblock %}

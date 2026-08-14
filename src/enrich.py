@@ -112,12 +112,14 @@ def _enrich_office_from_hierarchy(cur, office_id, identity):
 def _cached_funding(cur, opp):
     cur.execute(
         """select federal_account_code, federal_account_name, fiscal_year,
-                  budgetary_resources, obligations, source, raw_json
+                  budgetary_resources, obligations, president_budget_amount,
+                  source, raw_json
            from funding_accounts
            where agency_name=%s or agency_name is null
            order by fiscal_year desc nulls last limit 12""", (opp.get("agency"),))
     rows = [dict(zip(("federal_account_code", "federal_account_name", "fiscal_year",
-                      "budgetary_resources", "obligations", "source", "raw_json"),
+                      "budgetary_resources", "obligations",
+                      "president_budget_amount", "source", "raw_json"),
                      r, strict=True)) for r in cur.fetchall()]
     accounts = [r for r in rows if r.get("federal_account_code")]
     budget = [r for r in rows if r.get("budgetary_resources") is not None]
@@ -338,6 +340,11 @@ def _link_forecasts_run(conn):
     return link_recent_opportunities(conn)
 
 
+def _refresh_grants_run(conn):
+    from .db_grants import refresh_grants
+    return refresh_grants(conn)
+
+
 def _civic_job(job_name, fn):
     from . import db
     from .jobs import record_job
@@ -391,6 +398,8 @@ if __name__ == "__main__":
                       sys.argv[sys.argv.index("--import-directed-spending") + 1])
     elif "--refresh-forecasts" in sys.argv:
         _civic_job("refresh_forecasts", _refresh_forecasts_run)
+    elif "--refresh-grants" in sys.argv:
+        _civic_job("refresh_grants", _refresh_grants_run)
     elif "--link-forecasts" in sys.argv:
         _civic_job("link_forecasts", _link_forecasts_run)
     elif "--import-forecasts" in sys.argv:
