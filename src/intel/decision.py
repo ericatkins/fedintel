@@ -175,11 +175,31 @@ def _buyer_position(projects, dossier, opp):
                 mitigation="Record past projects to assess customer familiarity.")
 
 
-def _incumbent_position(incumbent):
+def _incumbent_position(incumbent, forecasts=None):
     status = (incumbent or {}).get("incumbent_status", "insufficient_data")
     name = (incumbent or {}).get("likely_incumbent_name")
     conf = (incumbent or {}).get("incumbent_confidence", 0)
     ev = list((incumbent or {}).get("supporting_evidence", []))[:3]
+    stated = next((f for f in forecasts or [] if f.get("incumbent_name")), None)
+    if stated:
+        f_name = stated["incumbent_name"]
+        forecast_ev = (f"The agency's own procurement forecast names {f_name} "
+                       "as the incumbent (primary source)")
+        if name and f_name.lower() != name.lower():
+            ev.append(forecast_ev + f" — CONFLICTS with the award-history "
+                      f"read ({name}); verify before acting on either")
+        elif name:
+            ev.append(forecast_ev + " — corroborates the award-history read")
+            conf = min(95, conf + 10)
+        else:
+            return _dim("incumbent_position", "Incumbent position", "weak",
+                        [forecast_ev,
+                         "Award history alone could not identify an incumbent "
+                         "— the forecast is the only source."],
+                        70, "high",
+                        mitigation="Verify the forecast-stated incumbent's "
+                                   "current contract before building a "
+                                   "displacement strategy.")
     if status == "confirmed_incumbent":
         return _dim("incumbent_position", "Incumbent position", "weak",
                     [f"Confirmed incumbent {name} ({conf}/100)"] + ev, conf, "high",
@@ -447,7 +467,8 @@ def build_decision_stack(opp: dict, match: dict, dossier: dict | None,
                          qualification: dict | None, value_est: dict | None,
                          documents: list[dict] | None, days_left: int | None,
                          projects: list[dict] | None = None,
-                         weights: dict[str, int] | None = None) -> dict:
+                         weights: dict[str, int] | None = None,
+                         forecasts: list[dict] | None = None) -> dict:
     """The per-organization decision stack for one opportunity.
 
     All inputs are stored records; nothing here fetches or invents. Unknown
@@ -458,7 +479,7 @@ def build_decision_stack(opp: dict, match: dict, dossier: dict | None,
         _capability_fit(match or {}, opp),
         _past_performance(projects, opp),
         _buyer_position(projects, dossier, opp),
-        _incumbent_position(dossier.get("incumbent_analysis")),
+        _incumbent_position(dossier.get("incumbent_analysis"), forecasts),
         _competitive_position(dossier.get("competition_landscape")),
         _economic_attractiveness(value_est, dossier.get("market_size")),
         _strategic_value(weights, opp, match or {}),

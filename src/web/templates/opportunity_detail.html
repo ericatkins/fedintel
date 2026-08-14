@@ -180,6 +180,30 @@
       </ul>
     </div>
   {% endif %}
+  {% if req_delta and req_delta.comparable %}
+    <div class="panel timeline-panel">
+      <h3>Requirement changes since the earlier stage</h3>
+      {% if req_delta.added %}
+      <p><strong>Added ({{ req_delta.added | length }}):</strong></p>
+      <ul class="evlist">{% for r in req_delta.added %}
+        <li><span class="conf">{{ r.requirement_type }}</span> {{ r.value }}</li>
+      {% endfor %}</ul>
+      {% endif %}
+      {% if req_delta.removed %}
+      <p><strong>No longer extracted ({{ req_delta.removed | length }}):</strong></p>
+      <ul class="evlist">{% for r in req_delta.removed %}
+        <li><span class="conf">{{ r.requirement_type }}</span> {{ r.value }}</li>
+      {% endfor %}</ul>
+      {% endif %}
+      {% if not req_delta.added and not req_delta.removed %}
+      <p class="conf">No requirement-level changes detected between stages
+        ({{ req_delta.unchanged_count }} unchanged).</p>
+      {% endif %}
+      <p class="conf">"No longer extracted" means the rule stopped firing on the
+      newer documents — usually the text changed. Reread the document; never
+      assume an obligation vanished.</p>
+    </div>
+  {% endif %}
   {% if history %}
     <div class="panel timeline-panel">
       <h3>Amendment &amp; change history</h3>

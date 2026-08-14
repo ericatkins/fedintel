@@ -565,16 +565,26 @@ def opportunity_detail(opp_id: int,
         rd = opp["response_deadline"]
         rd = rd if getattr(rd, "tzinfo", None) else rd.replace(tzinfo=_tz.utc)
         days_left = (rd.date() - date.today()).days
+    opp_forecasts = (store().forecasts_for_opportunity(opp_id)
+                     if allows(plan, "demand_radar") else None)
     decision = build_decision_stack(
         opp=opp,
         match={"score": opp.get("score"), "reasons": opp.get("reasons") or []},
         dossier=dossier, qualification=qualification, value_est=value_est,
         documents=documents, days_left=days_left,
         projects=projects,
-        weights=store().preference_weights(user["org_id"]))
+        weights=store().preference_weights(user["org_id"]),
+        forecasts=opp_forecasts)
+    req_delta = None
+    if requirements and lineage:
+        from ..intel.requirement_delta import lineage_requirement_delta
+        reqs_by_opp = {opp_id: requirements}
+        for step in lineage:
+            sid = step.get("opportunity_id")
+            if sid and sid != opp_id and sid not in reqs_by_opp:
+                reqs_by_opp[sid] = store().requirements_for_opportunity(sid)
+        req_delta = lineage_requirement_delta(opp_id, lineage, reqs_by_opp)
     tasks = store().list_capture_tasks(user["org_id"], opportunity_id=opp_id)
-    opp_forecasts = (store().forecasts_for_opportunity(opp_id)
-                     if allows(plan, "demand_radar") else None)
     from ..intel.ledger import build_evidence_ledger
     ledger = build_evidence_ledger(opp, dossier, documents, delegation,
                                    forecasts=opp_forecasts)
@@ -585,7 +595,7 @@ def opportunity_detail(opp_id: int,
                   requirements=requirements, qualification=qualification,
                   proof=proof, decision=decision, days_left=days_left,
                   tasks=tasks, ledger=ledger, history=history,
-                  opp_forecasts=opp_forecasts)
+                  opp_forecasts=opp_forecasts, req_delta=req_delta)
 
 
 @app.post("/app/opportunities/{opp_id}/status")
