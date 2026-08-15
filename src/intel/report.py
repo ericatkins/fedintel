@@ -33,8 +33,12 @@ _TEMPLATE = _env.from_string("""\
 <h1>Fedintel — Opportunity Intelligence Report</h1>
 {% set ns = namespace(n=0) %}
 
-{% set ns.n = ns.n + 1 %}<h2>{{ ns.n }}. Executive Summary</h2>
-<p>{{ d.snapshot.what_this_is }}</p>
+{% set ns.n = ns.n + 1 %}<h2>{{ ns.n }}. Executive Intelligence Brief</h2>
+{% if brief %}
+{% for p in brief %}<p>{{ p.text }}
+ {% if p.refs %}<span class="conf">[{{ p.refs | join(' · ') }}]</span>{% endif %}</p>
+{% endfor %}
+{% else %}<p>{{ d.snapshot.what_this_is }}</p>{% endif %}
 {% if decision %}
 <p><span class="badge">{{ decision.summary.recommendation }}</span>
  <span class="conf">confidence {{ decision.summary.confidence }}/100
@@ -259,7 +263,8 @@ def render_report(dossier: dict, opp_url: str | None = None,
                   decision: dict | None = None, value_est: dict | None = None,
                   days_left: int | None = None,
                   forecasts: list | None = None,
-                  ledger: list | None = None) -> str:
+                  ledger: list | None = None,
+                  brief: list | None = None) -> str:
     """inline_css=True for standalone/export HTML; False for the web route,
     which links /static/report.css so the strict CSP (style-src 'self')
     applies without 'unsafe-inline'."""
@@ -270,4 +275,4 @@ def render_report(dossier: dict, opp_url: str | None = None,
                             requirements=requirements or [],
                             decision=decision, value_est=value_est,
                             days_left=days_left, forecasts=forecasts or [],
-                            ledger=ledger or [])
+                            ledger=ledger or [], brief=brief or [])

@@ -3,9 +3,18 @@
 **New here? Read [docs/OVERVIEW.md](docs/OVERVIEW.md)** — what the product is for, every data source, every feature, the tech stack, and how the pipeline works.
 
 
-**Federal Opportunity Intelligence** — a daily pipeline that pulls SAM.gov
-contract opportunities, classifies and scores the ones where software is the
-key effort, and emails you a morning digest of top leads.
+**Federal demand intelligence and capture** — Fedintel ingests SAM.gov
+opportunities, reconstructs the contract history and buyer behavior behind
+each one, scores it against *your* company's profile and evidence library,
+and renders a decision-grade dossier: an executive intelligence brief, a
+ten-dimension capture decision stack, contract family + recompete clock,
+incumbent vulnerability (protests, oversight findings, bridges), peer-
+normalized Buyer DNA, competitive/teaming candidates, a funding ladder, an
+OCR-capable compliance matrix mapped to your past-performance proof, and a
+capture task plan — every claim traceable to a stored public record. A
+demand radar surfaces agency forecasts before SAM.gov, and grants run as a
+separate vertical. Daily digests and instant stage-transition alerts keep it
+recurring.
 
 Start here: [PROJECT_CONTINUITY.md](PROJECT_CONTINUITY.md) (strategy & architecture) ·
 [BUSINESS_PLAN.md](BUSINESS_PLAN.md) · [BRAND.md](BRAND.md)
@@ -55,9 +64,10 @@ Never commit `.env` — it's gitignored. Secrets live in Railway variables.
 ## Development
 ```bash
 pip install -r requirements-dev.txt
-pytest            # 54 tests: security, normalization, classification, digest, send-state
-ruff check .      # lint incl. bandit security rules
-bandit -r src     # security scan
+pytest                        # 300+ tests incl. tenant isolation + golden gate
+python -m src.tools.run_eval  # golden evaluation scorecard (release gate)
+ruff check .                  # lint incl. bandit security rules
+bandit -r src                 # security scan (justified #nosec only)
 pip-audit -r requirements.txt
 ```
 CI runs all of the above plus a committed-secrets guard on every push.

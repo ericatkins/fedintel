@@ -49,6 +49,19 @@
   </div>
 </div>
 
+{% if brief %}
+<div class="panel stack-panel">
+  <h3>Executive intelligence brief</h3>
+  {% for p in brief %}
+  <p>{{ p.text }}
+    {% if p.refs %}<span class="conf">[{{ p.refs | join(' · ') }}]</span>{% endif %}</p>
+  {% endfor %}
+  <p class="conf">Assembled deterministically from the sections below — the
+  brief is a reading order, never a new claim. Each bracket names the section
+  that substantiates the sentence.</p>
+</div>
+{% endif %}
+
 <div class="panel stack-panel">
   <h3>Capture decision stack — ten dimensions, separately assessed</h3>
   <table class="stack">

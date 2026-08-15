@@ -15,6 +15,8 @@ ever reach the client (enforced by design + CSP).
 | USAspending refresh | Railway cron weekly | `python -m src.enrich --refresh-awards` |
 | Vendor profiles | Railway cron weekly | `python -m src.enrich --build-vendor-profiles` |
 | Office market stats | Railway cron weekly | `python -m src.enrich --build-office-market-stats` |
+| Demand signals (forecasts + grants + oversight links) | Railway cron weekly (`deploy/railway/demand-weekly.json`) | `python -m src.enrich --refresh-forecasts && --refresh-grants && --link-oversight` |
+| Operator imports (as published) | manual | `--import-forecasts` / `--import-oversight` / `--import-protests` CSV files per docs/DATA_SOURCES.md |
 | Web app | Railway service | `uvicorn src.web.app:app --host 0.0.0.0 --port $PORT` |
 
 Install: `pip install -r requirements.txt -r requirements-api.txt`

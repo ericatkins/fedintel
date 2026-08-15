@@ -567,10 +567,16 @@ def _assemble_intel(user: dict, opp: dict, opp_id: int, dossier, plan: str) -> d
         projects=projects,
         weights=store().preference_weights(user["org_id"]),
         forecasts=opp_forecasts)
+    from ..intel.brief import build_executive_brief
+    oversight = store().oversight_for_opportunity(opp_id)
+    brief = build_executive_brief(opp, dossier, decision,
+                                  forecasts=opp_forecasts,
+                                  oversight=oversight)
     return {"value_est": value_est, "documents": documents,
             "requirements": requirements, "qualification": qualification,
             "proof": proof, "days_left": days_left,
-            "opp_forecasts": opp_forecasts, "decision": decision}
+            "opp_forecasts": opp_forecasts, "decision": decision,
+            "oversight": oversight, "brief": brief}
 
 
 @app.get("/app/opportunities/{opp_id}", response_class=HTMLResponse)
@@ -594,6 +600,7 @@ def opportunity_detail(opp_id: int,
     requirements, qualification = intel["requirements"], intel["qualification"]
     proof, days_left = intel["proof"], intel["days_left"]
     opp_forecasts, decision = intel["opp_forecasts"], intel["decision"]
+    oversight, brief = intel["oversight"], intel["brief"]
     req_delta = None
     if requirements and lineage:
         from ..intel.requirement_delta import lineage_requirement_delta
@@ -604,7 +611,6 @@ def opportunity_detail(opp_id: int,
                 reqs_by_opp[sid] = store().requirements_for_opportunity(sid)
         req_delta = lineage_requirement_delta(opp_id, lineage, reqs_by_opp)
     tasks = store().list_capture_tasks(user["org_id"], opportunity_id=opp_id)
-    oversight = store().oversight_for_opportunity(opp_id)
     from ..intel.ledger import build_evidence_ledger
     ledger = build_evidence_ledger(opp, dossier, documents, delegation,
                                    forecasts=opp_forecasts,
@@ -617,7 +623,7 @@ def opportunity_detail(opp_id: int,
                   proof=proof, decision=decision, days_left=days_left,
                   tasks=tasks, ledger=ledger, history=history,
                   opp_forecasts=opp_forecasts, req_delta=req_delta,
-                  oversight=oversight)
+                  oversight=oversight, brief=brief)
 
 
 @app.post("/app/opportunities/{opp_id}/status")
@@ -700,7 +706,7 @@ def report_view(opp_id: int, session: str | None = Cookie(default=None, alias=SE
                       else intel["requirements"]) or [],
         decision=intel["decision"], value_est=intel["value_est"],
         days_left=intel["days_left"], forecasts=intel["opp_forecasts"],
-        ledger=ledger))
+        ledger=ledger, brief=intel["brief"]))
 
 
 @app.get("/app/opportunities.csv")

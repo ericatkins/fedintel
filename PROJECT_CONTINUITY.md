@@ -374,3 +374,19 @@ Migration 015:
 - Remaining next work: live-record golden cases + adapter validation
   (needs SAM_API_KEY + network) · office-level protest-rate metrics for
   Buyer DNA · exclusions/responsibility signals · grant match-feasibility.
+
+## Brief, ops, and packaging release (Aug 2026, sixth tranche)
+
+- **Executive Intelligence Brief** (`intel/brief.py`): the dossier's opening
+  narrative, assembled deterministically from stored sections — what the
+  government needs, why now (expiration/forecast/oversight), history and
+  vulnerability, buyer behavior vs peers, your strongest position and
+  largest gap, recommended approach, unresolved questions. Every paragraph
+  carries [section refs]; it is a reading order, never a new claim. Renders
+  atop the dossier and as report section 1.
+- **Ops**: deploy/railway/demand-weekly.json schedules forecast + grants
+  refresh and oversight linking; DEPLOYMENT.md lists the operator imports.
+- **docs/COMMERCIAL_PACKAGING.md**: plan boundaries mapped to shipped
+  entitlement flags with anchor prices for validation and an explicit
+  do-not-sell list (webhooks/bulk before they exist).
+- README rewritten to describe the product as shipped.

@@ -242,7 +242,7 @@ frontend framework.
 | DB access | `psycopg2` + `ThreadedConnectionPool` | Pooled, one transaction per operation; static/parameterized SQL only |
 | Documents | `pypdf` | Pure-Python, parses structure only, never executes content |
 | Email | Resend | With idempotency keys so retries can't double-send |
-| Hosting | Railway (Docker), one image | Web service + 5 cron workers |
+| Hosting | Railway (Docker), one image | Web service + 7 cron workers |
 | CI | GitHub Actions | ruff, pytest, bandit, pip-audit, secret guard, and a real Postgres integration job |
 
 **Scale of the codebase:** ~10,200 lines of application code, ~3,700 lines of
@@ -377,7 +377,7 @@ src/
 db/
   schema.sql         full current schema
   migrations/        001 → 010, applied in order by scripts/migrate.py
-deploy/railway/      7 service configs (1 web + 6 cron)
+deploy/railway/      8 service configs (1 web + 7 cron)
 docs/                DEPLOYMENT · PUBLIC_BETA_CHECKLIST · DOCUMENT_INTEL ·
                      DELEGATION_INTEL · DISTRICT_INTEL · this file
 tests/               258 unit tests + tests/integration (27, real Postgres)
