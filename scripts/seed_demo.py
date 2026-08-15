@@ -356,6 +356,24 @@ def run():
         ):
             upsert_grant(cur, g)
 
+        # oversight signal: an open GAO recommendation that plausibly explains
+        # the flagship requirement (linked as inferred context)
+        from src.db_oversight import upsert_finding
+        upsert_finding(cur, {
+            "source": "gao", "source_record_id": "GAO-25-106230-R1",
+            "finding_type": "recommendation", "agency": "DEPT OF THE ARMY",
+            "subtier": None,
+            "title": "Army should modernize legacy inventory management "
+                     "systems to improve asset visibility",
+            "detail": "GAO found the Army's legacy inventory management "
+                      "applications limit asset visibility and recommended "
+                      "modernization with automated data migration and "
+                      "dashboards.",
+            "report_number": "GAO-25-106230", "published_date": "2025-11-18",
+            "status": "open",
+            "source_url": "https://www.gao.gov/products/gao-25-106230",
+            "raw_json": {"demo": True}})
+
         # one open capture task so the watchlist tasks table is populated
         cur.execute("select count(*) from capture_tasks where organization_id=%s",
                     (demo_oid,))
@@ -379,6 +397,8 @@ def run():
         refresh_profile_matches_for_org(conn, demo_oid)
         from src.db_forecasts import link_recent_opportunities
         link_recent_opportunities(conn)
+        from src.db_oversight import link_recent_opportunities as link_oversight
+        link_oversight(conn)
         print("Demo data seeded. Login: demo@fedintel.local / fedintel-demo-password")
     finally:
         conn.close()

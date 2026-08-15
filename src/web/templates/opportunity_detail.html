@@ -261,6 +261,29 @@
       (<code>python -m src.enrich --refresh-legislators</code>).</p>
     </div>
   {% endif %}
+  {% if oversight %}
+    <div class="panel timeline-panel">
+      <h3>Why this requirement exists — oversight signals</h3>
+      <ul class="evlist">
+      {% for f in oversight %}
+        <li><strong>{{ f.title }}</strong>
+          <span class="badge {{ 'ok' if f.link_kind == 'cited' else 'inc' }}">{{ 'cited by the notice' if f.link_kind == 'cited' else 'inferred' }}</span>
+          <div class="conf">{{ f.finding_type | replace('_', ' ') }}
+            {% if f.report_number %} · {{ f.report_number }}{% endif %}
+            {% if f.status %} · {{ f.status }}{% endif %}
+            {% if f.published_date %} · {{ f.published_date }}{% endif %}
+            {% if f.agency %} · {{ f.agency }}{% endif %}</div>
+          {% if f.detail %}<div class="conf">{{ f.detail[:220] }}{% if f.detail|length > 220 %}…{% endif %}</div>{% endif %}
+          <div class="conf">Why linked: {{ f.evidence | join('; ') }}</div>
+        </li>
+      {% endfor %}
+      </ul>
+      <p class="conf">Known cause vs inferred motivation: a finding marked
+      "cited by the notice" is a confirmed driver; "inferred" findings are
+      contextual only — plausible reasons this requirement exists, never
+      presented as fact.</p>
+    </div>
+  {% endif %}
   {% if opp_forecasts %}
     <div class="panel timeline-panel">
       <h3>Forecast lineage — this requirement was forecast</h3>

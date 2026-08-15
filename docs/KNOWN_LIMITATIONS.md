@@ -33,8 +33,18 @@ presented as shipped is its own kind of lie.
   or JV data, no vehicle-holder lookup. Size standing is inferred from
   set-aside award history, not SBA certification data — the panel says so.
 - **Incumbent vulnerability signals are a starter set** (bridge, set-aside
-  change, requirement-change language, obligation rate). Protest history, IG/
-  GAO findings, and exclusions are not yet ingested.
+  change, requirement-change language, obligation rate). Protest history and
+  exclusions are not ingested; GAO/IG findings now arrive via the oversight
+  import and power "why this requirement exists", but are not yet folded
+  into the vulnerability score.
+- **Oversight signals are import-driven and inferred.** No live GAO API pull;
+  findings arrive via provenance-enforced CSV, and links are labeled
+  inferred context unless the notice cites the report number. Findings do
+  not yet feed the decision stack.
+- **Grant eligibility checks applicant type only.** The likely-eligible /
+  not-listed / unknown verdicts match your declared applicant type against
+  the NOFO's list; match feasibility, evidence readiness, and compliance
+  burden remain unbuilt.
 - **Proof mapping is token-based.** It surfaces candidate projects for a
   past-performance narrative and labels partial overlap as weak; it does not
   do semantic matching, and says so on the page.

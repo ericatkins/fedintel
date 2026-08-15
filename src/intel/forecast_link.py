@@ -19,8 +19,10 @@ def _same_org(a: str | None, b: str | None) -> bool:
 def score_forecast_link(opp: dict, forecast: dict) -> dict | None:
     """Score one (opportunity, forecast) pair. Returns None below threshold."""
     score, evidence = 0, []
-    if _same_org(opp.get("agency"), forecast.get("agency")) or \
-            _same_org(opp.get("agency"), forecast.get("subtier")):
+    opp_orgs = " > ".join(str(v) for v in (opp.get("agency"),
+                                           opp.get("agency_path")) if v)
+    if _same_org(opp_orgs, forecast.get("agency")) or \
+            _same_org(opp_orgs, forecast.get("subtier")):
         score += 20
         evidence.append("same agency")
         if _same_org(opp.get("office"), forecast.get("office")):

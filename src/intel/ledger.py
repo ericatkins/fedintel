@@ -24,7 +24,8 @@ def _row(title, org, identifier=None, url=None, retrieved=None, used_by=None,
 def build_evidence_ledger(opp: dict, dossier: dict | None,
                           documents: list[dict] | None,
                           delegation: list[dict] | None,
-                          forecasts: list[dict] | None = None) -> list[dict]:
+                          forecasts: list[dict] | None = None,
+                          oversight: list[dict] | None = None) -> list[dict]:
     rows = [_row(
         "Opportunity notice", "SAM.gov (GSA)",
         identifier=opp.get("source_notice_id"), url=opp.get("url"),
@@ -97,6 +98,19 @@ def build_evidence_ledger(opp: dict, dossier: dict | None,
             used_by=["forecast lineage", "demand radar"],
             limitations="Forecasts are agency planning statements, not "
                         "commitments; dates and scope routinely change.",
+        ))
+
+    for f in oversight or []:
+        rows.append(_row(
+            f"Oversight finding: {(f.get('title') or '')[:80]}",
+            {"gao": "Government Accountability Office"}.get(
+                f.get("source"), "Oversight body (operator import)"),
+            identifier=f.get("report_number"), url=f.get("source_url"),
+            used_by=["why this requirement exists"],
+            limitations=("The notice cites this report directly."
+                         if f.get("link_kind") == "cited" else
+                         "Inferred demand context only — not a confirmed "
+                         "procurement driver."),
         ))
 
     if delegation:

@@ -162,3 +162,43 @@ def test_digest_escapes_intel_line_payload():
     html = render([row], now.date(), now=now)
     assert "<script>" not in html and "<img" not in html
     assert "&lt;script&gt;" in html
+
+
+def test_report_includes_new_intelligence_sections():
+    """The printable report carries the full research hierarchy: decision
+    stack, contract family, Buyer DNA, teaming, funding ladder, and ledger."""
+    from src.intel.decision import build_decision_stack
+    opp_norm = {"title": "T", "agency": "DEPT OF THE ARMY",
+                "office": "ACC", "notice_type": "Solicitation",
+                "naics": "541512", "description_text": "software",
+                "solicitation_number": "RPT-SOL-1"}
+    award = make_award(source_award_id="RPT-1", recipient_name="ACME",
+                      award_date="2024-06-15", period_end="2026-06-14",
+                      naics="541512", solicitation_number="RPT-SOL-1")
+    d = build_dossier(opp_norm, {"score": 80}, [award], [], [],
+                      [{"fiscal_year": 2025, "budgetary_resources": 5e6,
+                        "obligations": 4e6, "president_budget_amount": 0,
+                        "source": "usaspending"}], today=TODAY)
+    decision = build_decision_stack(
+        opp=opp_norm, match={"score": 80, "reasons": []}, dossier=d,
+        qualification=None, value_est=None, documents=None, days_left=20)
+    html = render_report(
+        d, decision=decision, days_left=20,
+        forecasts=[{"title": "Forecast F", "similarity_score": 60,
+                    "agency": "DEPT OF THE ARMY", "subtier": None,
+                    "action_type": "recompete", "incumbent_name": None,
+                    "anticipated_solicitation": "2026-06-01",
+                    "evidence": ["same agency", "same NAICS"]}],
+        ledger=[{"source_title": "Opportunity notice", "organization": "SAM.gov",
+                 "identifier": "n1", "url": None, "retrieved": None,
+                 "used_by": ["facts"], "limitations": None}])
+    for section in ("Capture Decision Stack", "Forecast Lineage",
+                    "Contract Family", "Funding Context",
+                    "Evidence &amp; Source Ledger"):
+        assert section in html, section
+    # numbering is sequential regardless of optional sections
+    import re
+    numbers = [int(m) for m in re.findall(r"<h2>(\d+)\.", html)]
+    assert numbers == list(range(1, len(numbers) + 1))
+    # unknown ratings print as unknown, never as negatives
+    assert "unknown" in html

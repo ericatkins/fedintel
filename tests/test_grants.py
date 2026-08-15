@@ -89,8 +89,11 @@ def test_grants_page_renders_with_honest_relevance_labeling(grants_env):
     assert "Rural Data Infrastructure Grants" in page.text
     assert "up to $750,000" in page.text
     assert "data, infrastructure" in page.text or "data" in page.text
-    # honesty: relevance is labeled as keyword matching, not fit
-    assert "not" in page.text and "eligibility or readiness assessment" in page.text
+    # honesty: relevance is labeled as keyword matching, not fit; eligibility
+    # cautions are never presented as certainty
+    assert "fit or\nreadiness assessment" in page.text or \
+        "fit or readiness assessment" in page.text
+    assert "a caution, not a certainty" in page.text
     # vertical separation stated on the page
     assert "Contract scoring is never applied here" in page.text
 

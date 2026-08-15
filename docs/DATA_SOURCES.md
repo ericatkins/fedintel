@@ -31,6 +31,7 @@ rejects the file.
 | Congressional staff rosters | `--import-staff` | House Statement of Disbursements, commercial directories |
 | Election results | `--import-election-results` | MIT Election Lab, state SoS |
 | Directed spending (CPF/earmarks) | `--import-directed-spending` | appropriations committee disclosures |
+| Oversight findings (GAO/IG) | `python -m src.enrich --import-oversight file.csv` | GAO publishes CSV downloads of open recommendations and high-risk areas; IG reports indexed on oversight.gov. Required columns: `source_record_id, finding_type (recommendation/high_risk/ig_finding), title, source_url`; optional: source, agency, subtier, detail, report_number, published_date, status. Linked to opportunities as INFERRED context unless the notice cites the report number ('cited'). |
 
 ## Forecast → opportunity linking
 
@@ -45,7 +46,7 @@ planning statements, not commitments — the UI says so wherever they appear.
 - Acquisition.gov forecast directory (index of per-agency forecast pages —
   drives the CSV import workflow; no unified API).
 - Grants.gov / Simpler.Grants.gov, SAM Assistance Listings (grants vertical).
-- GAO recommendations/high-risk/bid-protest data, agency IG reports
-  (oversight demand signals; GAO has structured data downloads).
+- GAO bid-protest decision data (protest history for Buyer DNA — the
+  recommendation/high-risk import above covers demand signals).
 - Federal Register / Unified Agenda / Regulations.gov (regulatory demand).
 - Congress.gov / GovInfo (funding ladder deepening).

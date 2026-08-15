@@ -400,6 +400,23 @@ if __name__ == "__main__":
         _civic_job("refresh_forecasts", _refresh_forecasts_run)
     elif "--refresh-grants" in sys.argv:
         _civic_job("refresh_grants", _refresh_grants_run)
+    elif "--import-oversight" in sys.argv:
+        from . import db
+        from .db_oversight import import_oversight_csv
+        from .db_oversight import link_recent_opportunities as _link_oversight
+        _conn = db.get_conn()
+        _conn.autocommit = False
+        try:
+            import_oversight_csv(
+                _conn, sys.argv[sys.argv.index("--import-oversight") + 1])
+            _link_oversight(_conn)
+        finally:
+            _conn.close()
+    elif "--link-oversight" in sys.argv:
+        def _link_oversight_run(conn):
+            from .db_oversight import link_recent_opportunities
+            return link_recent_opportunities(conn)
+        _civic_job("link_oversight", _link_oversight_run)
     elif "--link-forecasts" in sys.argv:
         _civic_job("link_forecasts", _link_forecasts_run)
     elif "--import-forecasts" in sys.argv:

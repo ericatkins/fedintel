@@ -871,3 +871,38 @@ def test_grant_upsert_round_trip_and_listing(conn):
     with conn.cursor() as cur:
         cur.execute("delete from grant_opportunities where id=%s", (gid,))
     conn.commit()
+
+
+def test_oversight_findings_link_round_trip(conn):
+    """oversight_findings + opportunity_oversight_links in real SQL."""
+    from src.db_oversight import link_recent_opportunities, upsert_finding
+    from src.web.store import PgStore
+    store = PgStore.for_connection(conn)
+    with conn.cursor() as cur:
+        fid = upsert_finding(cur, {
+            "source": "gao", "source_record_id": "IT-OV-1",
+            "finding_type": "recommendation", "agency": "DEPT OF THE ARMY",
+            "title": "Army should modernize inventory management systems",
+            "detail": "legacy inventory applications limit asset visibility",
+            "report_number": "GAO-25-000042", "published_date": "2025-11-18",
+            "status": "open", "source_url": "https://gao.gov/x",
+            "raw_json": {"v": 1}})
+        cur.execute("""insert into opportunities (source, source_notice_id, title,
+                       agency, description_text, content_hash, raw_json,
+                       first_seen_at)
+                       values ('sam','pg-ov-opp',
+                       'Inventory management system modernization',
+                       'DEPT OF THE ARMY',
+                       'modernize legacy inventory application, dashboards',
+                       'oh','{}', now()) returning id""")
+        opp_id = cur.fetchone()[0]
+    conn.commit()
+    assert link_recent_opportunities(conn) >= 1
+    rows = store.oversight_for_opportunity(opp_id)
+    assert rows and rows[0]["report_number"] == "GAO-25-000042"
+    assert rows[0]["link_kind"] == "inferred"
+    assert rows[0]["evidence"]
+    with conn.cursor() as cur:
+        cur.execute("delete from opportunities where id=%s", (opp_id,))
+        cur.execute("delete from oversight_findings where id=%s", (fid,))
+    conn.commit()

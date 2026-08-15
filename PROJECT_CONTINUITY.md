@@ -323,3 +323,31 @@ Migration 013:
 - Remaining next work: grant readiness + recipient intelligence ·
   appropriations-bill status for the ladder · protest/IG/GAO signals ·
   golden-set evaluation against live SAM.gov (needs SAM_API_KEY + network).
+
+## Oversight, readiness, and report release (Aug 2026, fourth tranche)
+
+Migration 014:
+
+- **Oversight demand signals**: oversight_findings +
+  opportunity_oversight_links; provenance-enforced CSV import
+  (`--import-oversight`); deterministic linking (agency/hierarchy-path +
+  subject similarity + open-status, ≥2 evidence signals) with an explicit
+  cited-vs-inferred distinction — a notice citing the report number is the
+  only 'cited' path. "Why this requirement exists" panel + ledger rows.
+- **Agency-path matching fix**: forecast and oversight linkers now match
+  subtier-level sources (DEPT OF THE ARMY) against department-labeled
+  notices via raw fullParentPathName — both linkers previously missed the
+  +20 agency signal on DoD notices.
+- **Grant readiness v1** (`intel/grant_readiness.py`): applicant_type
+  profile field → likely_eligible / not_listed / unknown verdicts on the
+  grants page, with cost-share notes; 'not listed' is presented as a
+  caution, never a certainty. Deeper readiness still on the roadmap.
+- **Printable report rebuilt**: auto-numbered sections now include the
+  decision stack, forecast lineage, contract family + vulnerability,
+  Buyer DNA, competitive/teaming, funding ladder, proof-annotated
+  requirements, and the evidence ledger — the print export preserves the
+  full research hierarchy and citations. Report and page share one
+  assembly code path (`_assemble_intel`).
+- Remaining next work: protest-history ingestion · oversight/forecast
+  signals feeding decision-stack dimensions · grant match-feasibility ·
+  golden-set evaluation against live SAM.gov (needs SAM_API_KEY + network).

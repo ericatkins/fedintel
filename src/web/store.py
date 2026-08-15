@@ -916,6 +916,24 @@ class PgStore:
                 (opportunity_id,))
             return [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
 
+    def oversight_for_opportunity(self, opportunity_id):
+        cols = ("id", "finding_type", "agency", "title", "detail",
+                "report_number", "published_date", "status", "source_url",
+                "link_kind", "similarity_score", "confidence", "evidence")
+        with self.cursor() as cur:
+            cur.execute(
+                """select f.id, f.finding_type, f.agency, f.title, f.detail,
+                          f.report_number, f.published_date, f.status,
+                          f.source_url, l.link_kind, l.similarity_score,
+                          l.confidence, l.evidence_json
+                   from opportunity_oversight_links l
+                   join oversight_findings f on f.id = l.finding_id
+                   where l.opportunity_id=%s
+                   order by case l.link_kind when 'cited' then 0 else 1 end,
+                            l.similarity_score desc
+                   limit 4""", (opportunity_id,))
+            return [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
+
     _GRANT_COLS = ("id", "source", "source_grant_id", "opportunity_number",
                    "title", "agency_code", "agency_name",
                    "assistance_listings", "opportunity_status", "posted_date",
@@ -1274,6 +1292,10 @@ class MemoryStore:
 
     def get_vendor(self, vendor_id):
         return self.vendors.get(vendor_id)
+
+    def oversight_for_opportunity(self, opportunity_id):
+        return [f for f in getattr(self, "oversight_links", [])
+                if f.get("opportunity_id") == opportunity_id]
 
     def list_grants(self, q=None, limit=200):
         rows = list(getattr(self, "grants", []))

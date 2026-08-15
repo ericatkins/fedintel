@@ -76,13 +76,13 @@ def link_recent_opportunities(conn, lookback_days: int = 30,
             return 0
         cur.execute(
             """select id, title, agency, office, naics, posted_date,
-                      description_text
+                      description_text, raw_json->>'fullParentPathName'
                from opportunities
                where first_seen_at > now() - make_interval(days => %s)
                order by first_seen_at desc limit %s""",
             (lookback_days, limit))
         cols = ("id", "title", "agency", "office", "naics", "posted_date",
-                "description_text")
+                "description_text", "agency_path")
         opps = [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
         for opp in opps:
             for ln in link_forecasts(opp, forecasts)[:5]:

@@ -15,7 +15,7 @@ Contract scoring is never applied here.</p>
 {% if grants %}
 <table class="kb">
   <thead><tr><th>Closes</th><th>Opportunity</th><th>Agency</th><th>Awards</th>
-    <th>Instrument</th><th>Cost share</th><th>Keyword relevance</th></tr></thead>
+    <th>Instrument</th><th>Cost share</th><th>Eligibility</th><th>Keyword relevance</th></tr></thead>
   <tbody>
   {% for g in grants %}
     <tr>
@@ -32,15 +32,20 @@ Contract scoring is never applied here.</p>
       <td>{% if g.award_ceiling %}up to ${{ '{:,.0f}'.format(g.award_ceiling) }}{% if g.expected_awards %} × ~{{ g.expected_awards }}{% endif %}{% else %}—{% endif %}</td>
       <td>{{ (g.funding_instrument or '—') | replace('_', ' ') }}</td>
       <td>{% if g.cost_sharing is true %}required{% elif g.cost_sharing is false %}no{% else %}—{% endif %}</td>
+      <td><span class="rating r-{{ 'strong' if g.readiness.verdict == 'likely_eligible' else ('weak' if g.readiness.verdict == 'not_listed' else 'unknown') }}">{{ g.readiness.verdict | replace('_', ' ') }}</span>
+        <div class="conf">{{ g.readiness.why }}{% if g.readiness.cost_share_note %} {{ g.readiness.cost_share_note }}{% endif %}</div></td>
       <td class="conf">{% if g.matched_terms %}{{ g.matched_terms | join(', ') }}{% else %}none{% endif %}</td>
     </tr>
   {% endfor %}
   </tbody>
 </table>
-<p class="conf">"Keyword relevance" lists profile terms found in the grant text —
-it is <strong>not</strong> an eligibility or readiness assessment. Grant-specific
-readiness (applicant type, match requirements, evidence, compliance) is on the
-roadmap; until it ships, read the NOFO.</p>
+<p class="conf">"Eligibility" checks your applicant type
+({{ applicant_type or 'not set — choose one on the profile page' }}) against the
+grant's eligible-applicant list; "not listed" is a caution, not a certainty —
+NOFO eligibility text is nuanced, always read it. "Keyword relevance" lists
+profile terms found in the grant text — it is <strong>not</strong> a fit or
+readiness assessment. Deeper readiness (match feasibility, evidence,
+compliance) is on the roadmap.</p>
 {% else %}
 <div class="panel">
   <h3>No grant opportunities loaded{% if q %} for this filter{% endif %}</h3>

@@ -369,7 +369,8 @@ def save_profile(request: Request,
                  locations: str = Form(""), set_aside_eligibility: str = Form(""),
                  keywords_boost: str = Form(""), keywords_suppress: str = Form(""),
                  excluded_categories: str = Form(""), contract_vehicles: str = Form(""),
-                 clearances: str = Form(""), certifications: str = Form("")):
+                 clearances: str = Form(""), certifications: str = Form(""),
+                 applicant_type: str = Form("")):
     user = require_user(session)
     require_csrf(session, csrf_token)
     values = {"name": name.strip(), "capabilities": capabilities, "industries": industries,
@@ -380,6 +381,9 @@ def save_profile(request: Request,
               "contract_vehicles": contract_vehicles, "clearances": clearances,
               "certifications": certifications}
     profile = {"name": values["name"]}
+    from ..intel.grant_readiness import APPLICANT_TYPES
+    profile["applicant_type"] = (applicant_type
+                                 if applicant_type in APPLICANT_TYPES else "")
     for field in PROFILE_LIST_FIELDS:
         profile[field] = [x.strip() for x in values[field].split(",") if x.strip()][:50]
     store().upsert_profile(user["org_id"], profile)
@@ -524,26 +528,14 @@ def opportunities(session: str | None = Cookie(default=None, alias=SESSION_COOKI
                   csrf=csrf_for(session))
 
 
-@app.get("/app/opportunities/{opp_id}", response_class=HTMLResponse)
-def opportunity_detail(opp_id: int,
-                       session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
-    user = require_user(session)
-    opp = store().get_opportunity(user["org_id"], opp_id)
-    if not opp:
-        raise HTTPException(status_code=404, detail="opportunity not found")
-    dossier = store().get_dossier(opp_id)
-    if not dossier:
-        store().mark_enrichment_pending(opp_id)
-    lineage = store().get_lineage(opp.get("solicitation_number")) \
-        if opp.get("solicitation_number") else []
+def _assemble_intel(user: dict, opp: dict, opp_id: int, dossier, plan: str) -> dict:
+    """The per-org intelligence bundle shared by the opportunity page and the
+    printable report — one code path so the two can never disagree."""
+    from .entitlements import allows
     value_est = None
     if dossier:
         from ..intel.value_estimate import estimate
         value_est = estimate(dossier.get("last_10_relevant_awards") or [])
-    from .entitlements import allows
-    plan = store().org_plan(user["org_id"])
-    delegation = (store().delegation_for_opportunity(opp_id)
-                  if allows(plan, "delegation_intel") else None)
     projects = store().list_projects(user["org_id"])
     documents = requirements = qualification = proof = None
     if allows(plan, "document_intel"):
@@ -575,6 +567,33 @@ def opportunity_detail(opp_id: int,
         projects=projects,
         weights=store().preference_weights(user["org_id"]),
         forecasts=opp_forecasts)
+    return {"value_est": value_est, "documents": documents,
+            "requirements": requirements, "qualification": qualification,
+            "proof": proof, "days_left": days_left,
+            "opp_forecasts": opp_forecasts, "decision": decision}
+
+
+@app.get("/app/opportunities/{opp_id}", response_class=HTMLResponse)
+def opportunity_detail(opp_id: int,
+                       session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
+    user = require_user(session)
+    opp = store().get_opportunity(user["org_id"], opp_id)
+    if not opp:
+        raise HTTPException(status_code=404, detail="opportunity not found")
+    dossier = store().get_dossier(opp_id)
+    if not dossier:
+        store().mark_enrichment_pending(opp_id)
+    lineage = store().get_lineage(opp.get("solicitation_number")) \
+        if opp.get("solicitation_number") else []
+    from .entitlements import allows
+    plan = store().org_plan(user["org_id"])
+    delegation = (store().delegation_for_opportunity(opp_id)
+                  if allows(plan, "delegation_intel") else None)
+    intel = _assemble_intel(user, opp, opp_id, dossier, plan)
+    value_est, documents = intel["value_est"], intel["documents"]
+    requirements, qualification = intel["requirements"], intel["qualification"]
+    proof, days_left = intel["proof"], intel["days_left"]
+    opp_forecasts, decision = intel["opp_forecasts"], intel["decision"]
     req_delta = None
     if requirements and lineage:
         from ..intel.requirement_delta import lineage_requirement_delta
@@ -585,9 +604,11 @@ def opportunity_detail(opp_id: int,
                 reqs_by_opp[sid] = store().requirements_for_opportunity(sid)
         req_delta = lineage_requirement_delta(opp_id, lineage, reqs_by_opp)
     tasks = store().list_capture_tasks(user["org_id"], opportunity_id=opp_id)
+    oversight = store().oversight_for_opportunity(opp_id)
     from ..intel.ledger import build_evidence_ledger
     ledger = build_evidence_ledger(opp, dossier, documents, delegation,
-                                   forecasts=opp_forecasts)
+                                   forecasts=opp_forecasts,
+                                   oversight=oversight)
     history = store().change_history_for_opportunity(opp_id)
     return render("opportunity_detail.html", user=user, o=opp, d=dossier,
                   lineage=lineage, statuses=TRACK_STATUSES, csrf=csrf_for(session),
@@ -595,7 +616,8 @@ def opportunity_detail(opp_id: int,
                   requirements=requirements, qualification=qualification,
                   proof=proof, decision=decision, days_left=days_left,
                   tasks=tasks, ledger=ledger, history=history,
-                  opp_forecasts=opp_forecasts, req_delta=req_delta)
+                  opp_forecasts=opp_forecasts, req_delta=req_delta,
+                  oversight=oversight)
 
 
 @app.post("/app/opportunities/{opp_id}/status")
@@ -662,18 +684,23 @@ def report_view(opp_id: int, session: str | None = Cookie(default=None, alias=SE
     dossier = store().get_dossier(opp_id)
     if not opp or not dossier:
         raise HTTPException(status_code=404, detail="dossier not generated yet")
+    from ..intel.ledger import build_evidence_ledger
     from ..intel.report import render_report
     from .entitlements import allows
+    plan = store().org_plan(user["org_id"])
     delegation = (store().delegation_for_opportunity(opp_id)
-                  if allows(store().org_plan(user["org_id"]), "delegation_intel")
-                  else [])
-    requirements = (store().requirements_for_opportunity(opp_id)
-                    if allows(store().org_plan(user["org_id"]), "document_intel")
-                    else [])
-    return HTMLResponse(render_report(dossier, opp.get("url"),
-                                      opp.get("source_notice_id"), inline_css=False,
-                                      delegation=delegation,
-                                      requirements=requirements))
+                  if allows(plan, "delegation_intel") else [])
+    intel = _assemble_intel(user, opp, opp_id, dossier, plan)
+    ledger = build_evidence_ledger(opp, dossier, intel["documents"], delegation,
+                                   forecasts=intel["opp_forecasts"])
+    return HTMLResponse(render_report(
+        dossier, opp.get("url"), opp.get("source_notice_id"), inline_css=False,
+        delegation=delegation,
+        requirements=(intel["proof"]["rows"] if intel["proof"]
+                      else intel["requirements"]) or [],
+        decision=intel["decision"], value_est=intel["value_est"],
+        days_left=intel["days_left"], forecasts=intel["opp_forecasts"],
+        ledger=ledger))
 
 
 @app.get("/app/opportunities.csv")
@@ -744,12 +771,16 @@ def grants_page(q: str = Query(default=""),
             for word in str(item).lower().split():
                 if len(word) >= 4:
                     terms.add(word)
+    from ..intel.grant_readiness import assess_grant_eligibility
+    applicant_type = profile.get("applicant_type") or None
     for g in grants:
         text = f"{g.get('title', '')} {g.get('description_text', '')}".lower()
         g["matched_terms"] = sorted(t for t in terms if t in text)[:5]
+        g["readiness"] = assess_grant_eligibility(g, applicant_type)
     grants.sort(key=lambda g: (str(g.get("close_date") or "9999"),
                                -len(g["matched_terms"])))
-    return render("grants.html", user=user, grants=grants, q=q)
+    return render("grants.html", user=user, grants=grants, q=q,
+                  applicant_type=applicant_type)
 
 
 @app.get("/app/agencies", response_class=HTMLResponse)

@@ -10,6 +10,14 @@ Presets: software developer · cyber firm · data/AI firm · logistics systems p
   <input type="hidden" name="csrf_token" value="{{ csrf }}">
   <label>Company name</label>
   <input name="name" value="{{ profile.name or '' }}" class="w100">
+  <label>Applicant type <span class="conf">(drives grant eligibility verdicts)</span></label>
+  <select name="applicant_type">
+    <option value="">—</option>
+    {% for t in ("small business", "other business", "nonprofit", "university",
+                 "state government", "local government", "tribal", "individual") %}
+    <option value="{{ t }}" {{ 'selected' if profile.applicant_type == t }}>{{ t }}</option>
+    {% endfor %}
+  </select>
   <label>Capabilities (plain English)</label>
   <textarea name="capabilities" rows="2" class="w100">{{ profile.capabilities | join(', ') if profile.capabilities }}</textarea>
   <label>Industries</label>
