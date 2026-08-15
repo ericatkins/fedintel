@@ -1,0 +1,64 @@
+/** Demo data so the city renders instantly without hitting the GitHub API. */
+import type { AccountMeta, RepoMeta } from './types'
+
+const now = Date.now()
+const daysAgo = (d: number) => new Date(now - d * 86_400_000).toISOString()
+
+export const MOCK_ACCOUNT: AccountMeta = {
+  login: 'dev_architect',
+  name: 'Dev Architect',
+  bio: 'Building the future, one commit at a time.',
+  avatarUrl: null,
+  type: 'User',
+  followers: 342,
+  following: 87,
+  publicRepos: 10,
+  htmlUrl: 'https://github.com',
+  createdAt: daysAgo(2400),
+}
+
+interface M {
+  name: string
+  desc: string
+  lang: string
+  stars: number
+  forks: number
+  watchers: number
+  size: number
+  issues: number
+  pushedDaysAgo: number
+}
+
+const MOCKS: M[] = [
+  { name: 'aurora-engine', desc: 'Real-time 3D engine built for the future.', lang: 'C++', stars: 2300, forks: 410, watchers: 180, size: 48210, issues: 64, pushedDaysAgo: 0.1 },
+  { name: 'nova-api', desc: 'Scalable REST & GraphQL backend.', lang: 'TypeScript', stars: 1100, forks: 205, watchers: 96, size: 12400, issues: 31, pushedDaysAgo: 0.4 },
+  { name: 'dataflow', desc: 'Stream processing & analytics.', lang: 'Python', stars: 856, forks: 142, watchers: 71, size: 9800, issues: 22, pushedDaysAgo: 1.2 },
+  { name: 'ml-workbench', desc: 'ML experiments & model training.', lang: 'Python', stars: 642, forks: 98, watchers: 54, size: 22100, issues: 17, pushedDaysAgo: 2 },
+  { name: 'ui-kit', desc: 'Reusable UI components & design system.', lang: 'TypeScript', stars: 512, forks: 76, watchers: 44, size: 5400, issues: 12, pushedDaysAgo: 3 },
+  { name: 'mobile-hub', desc: 'Cross-platform mobile app framework.', lang: 'Dart', stars: 421, forks: 61, watchers: 35, size: 8600, issues: 9, pushedDaysAgo: 6 },
+  { name: 'devops-suite', desc: 'CI/CD, infra as code & automation.', lang: 'Go', stars: 367, forks: 52, watchers: 30, size: 4100, issues: 7, pushedDaysAgo: 9 },
+  { name: 'docs-portal', desc: 'Documentation & knowledge base.', lang: 'JavaScript', stars: 210, forks: 25, watchers: 18, size: 2100, issues: 4, pushedDaysAgo: 15 },
+  { name: 'chat-core', desc: 'Real-time chat microservice.', lang: 'Go', stars: 128, forks: 19, watchers: 12, size: 1800, issues: 3, pushedDaysAgo: 28 },
+  { name: 'playground', desc: 'Sandbox & experiments.', lang: 'HTML', stars: 54, forks: 6, watchers: 4, size: 600, issues: 1, pushedDaysAgo: 60 },
+]
+
+export const MOCK_REPOS: RepoMeta[] = MOCKS.map((m, i) => ({
+  id: 1000 + i,
+  name: m.name,
+  fullName: `${MOCK_ACCOUNT.login}/${m.name}`,
+  owner: MOCK_ACCOUNT.login,
+  description: m.desc,
+  stars: m.stars,
+  forks: m.forks,
+  watchers: m.watchers,
+  openIssues: m.issues,
+  language: m.lang,
+  sizeKb: m.size,
+  pushedAt: daysAgo(m.pushedDaysAgo),
+  updatedAt: daysAgo(m.pushedDaysAgo),
+  createdAt: daysAgo(900 - i * 40),
+  isFork: false,
+  isArchived: false,
+  defaultBranch: 'main',
+  htmlUrl: `https://github.com/${MOCK_ACCOUNT.login}/${m.name}`,
+}))
