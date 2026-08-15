@@ -16,16 +16,20 @@ from .market import acquisition_pattern, competition_landscape, market_size
 from .offices import buyer_profile, office_identity_from_opportunity
 from .recommend import recommend
 
-DOSSIER_VERSION = 3
+DOSSIER_VERSION = 4
 
 
 def build_dossier(opp: dict, classification: dict, awards_office: list[dict],
                   awards_subtier: list[dict], accounts: list[dict],
                   budget_rows: list[dict], today: date | None = None,
-                  lineage_rows: list[dict] | None = None) -> dict:
+                  lineage_rows: list[dict] | None = None,
+                  protests: list[dict] | None = None,
+                  oversight: list[dict] | None = None) -> dict:
     """awards_office: award history attributed to the buying office.
     awards_subtier: broader subtier/category history (fallback context).
-    lineage_rows: notice-stage lineage for the same solicitation number."""
+    lineage_rows: notice-stage lineage for the same solicitation number.
+    protests: protest records in this solicitation family.
+    oversight: oversight findings linked to this opportunity."""
     today = today or date.today()
     identity = office_identity_from_opportunity(opp)
     quality: list[str] = []
@@ -69,7 +73,8 @@ def build_dossier(opp: dict, classification: dict, awards_office: list[dict],
     rec = recommend(classification.get("score", 0), days_left, incumbent, market,
                     competition, origin, funding, similar_range)
     family = build_contract_family(opp, links, lineage_rows=lineage_rows,
-                                   today=today)
+                                   today=today, protests=protests,
+                                   oversight=oversight)
     dna = build_buyer_dna(awards_office, awards_subtier, opp)
     competitive = build_competitive_teaming(opp, pool, incumbent, today=today)
 

@@ -133,7 +133,7 @@ def _recompete_clock(members, today):
     }
 
 
-def _vulnerability(members, opp, today):
+def _vulnerability(members, opp, today, protests=None, oversight=None):
     """Public-signal-only vulnerability read. Every signal names its evidence;
     absence of signals is never presented as incumbent strength."""
     signals, caveats = [], [
@@ -146,6 +146,30 @@ def _vulnerability(members, opp, today):
     if not incumbents:
         return {"assessment": "no defensible assessment", "signals": [],
                 "caveats": caveats + ["No plausible predecessor award linked."]}
+
+    for p in protests or []:
+        outcome = p.get("outcome") or "pending"
+        weight = ("a sustained protest or corrective action forced the agency "
+                  "to revisit the award"
+                  if outcome in ("sustained", "corrective_action") else
+                  "even unsuccessful protests signal a contested competition")
+        decided = (f", decided {p['decided_date']}"
+                   if p.get("decided_date") else "")
+        signals.append({
+            "signal": "bid protest in this solicitation family",
+            "evidence": f"{p.get('protester') or 'A protester'} filed "
+                        f"{p.get('source_record_id')} "
+                        f"({outcome.replace('_', ' ')}{decided}) — {weight}."})
+    for f in oversight or []:
+        if (f.get("status") or "") != "open":
+            continue
+        signals.append({
+            "signal": "open oversight finding",
+            "evidence": f"{f.get('report_number') or 'An oversight report'}: "
+                        f"{(f.get('title') or '')[:120]} — an open GAO/IG "
+                        "finding against the program area pressures the "
+                        "status quo (inferred context, "
+                        f"{f.get('link_kind', 'inferred')} link)."})
 
     bridges = [m for m in members if m["role"] == "bridge"]
     for b in bridges:
@@ -208,7 +232,9 @@ def _vulnerability(members, opp, today):
 
 def build_contract_family(opp: dict, links: list[dict],
                           lineage_rows: list[dict] | None = None,
-                          today: date | None = None) -> dict:
+                          today: date | None = None,
+                          protests: list[dict] | None = None,
+                          oversight: list[dict] | None = None) -> dict:
     """Assemble the contract family view for the dossier."""
     today = today or date.today()
     members = []
@@ -259,11 +285,30 @@ def build_contract_family(opp: dict, links: list[dict],
     timeline = [t for t in timeline if t["date"]]
     timeline.sort(key=lambda t: t["date"])
 
+    for p in protests or []:
+        if p.get("filed_date"):
+            timeline.append({
+                "date": str(p["filed_date"]),
+                "kind": "protest",
+                "label": f"Protest {p.get('source_record_id')} "
+                         f"({(p.get('outcome') or 'pending').replace('_', ' ')})",
+                "confirmed": True,
+            })
+    timeline.sort(key=lambda t: t["date"])
     return {
         "members": members,
         "timeline": timeline,
         "recompete": recompete,
-        "vulnerability": _vulnerability(members, opp, today),
+        "vulnerability": _vulnerability(members, opp, today,
+                                        protests=protests,
+                                        oversight=oversight),
+        "protests": [
+            {"b_number": p.get("source_record_id"),
+             "protester": p.get("protester"),
+             "outcome": p.get("outcome"),
+             "filed_date": str(p.get("filed_date") or ""),
+             "source_url": p.get("source_url")}
+            for p in (protests or [])[:5]],
         "member_count": len(members),
         "confirmed_count": sum(1 for m in members if m["confirmed"]),
     }

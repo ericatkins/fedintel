@@ -72,8 +72,13 @@ def enrich_one(conn, opp_id: int, profile: dict) -> bool:
                 (opp["solicitation_number"],))
             lineage_rows = [{"stage": r[0], "opportunity_id": r[1],
                              "posted_date": r[2]} for r in cur.fetchall()]
+        from .db_protests import protests_for_solicitation_family
+        protests = protests_for_solicitation_family(
+            cur, opp.get("solicitation_number"))
+        oversight = _linked_oversight(cur, opp)
         dossier = build_dossier(opp, classification, awards_office, awards_subtier,
-                                accounts, budget_rows, lineage_rows=lineage_rows)
+                                accounts, budget_rows, lineage_rows=lineage_rows,
+                                protests=protests, oversight=oversight)
 
         pool = awards_office or awards_subtier
         links = link_awards(opp, identity, pool)
@@ -92,6 +97,29 @@ def enrich_one(conn, opp_id: int, profile: dict) -> bool:
         return False
     finally:
         cur.close()
+
+
+def _linked_oversight(cur, opp: dict) -> list[dict]:
+    """Link stored oversight findings against this opportunity inline so a
+    fresh enrichment sees them even before the batch linking job runs."""
+    cur.execute(
+        """select id, source, source_record_id, finding_type, agency, subtier,
+                  title, detail, report_number, published_date, status,
+                  source_url
+           from oversight_findings order by imported_at desc limit 2000""")
+    cols = ("id", "source", "source_record_id", "finding_type", "agency",
+            "subtier", "title", "detail", "report_number", "published_date",
+            "status", "source_url")
+    findings = [dict(zip(cols, r, strict=True)) for r in cur.fetchall()]
+    if not findings:
+        return []
+    from .intel.oversight_link import link_findings
+    opp_ctx = dict(opp)
+    raw = opp.get("raw_json") or {}
+    if isinstance(raw, dict):
+        opp_ctx["agency_path"] = raw.get("fullParentPathName")
+    return [{**ln["finding"], "link_kind": ln["link_kind"]}
+            for ln in link_findings(opp_ctx, findings)[:4]]
 
 
 def _enrich_office_from_hierarchy(cur, office_id, identity):
@@ -410,6 +438,16 @@ if __name__ == "__main__":
             import_oversight_csv(
                 _conn, sys.argv[sys.argv.index("--import-oversight") + 1])
             _link_oversight(_conn)
+        finally:
+            _conn.close()
+    elif "--import-protests" in sys.argv:
+        from . import db
+        from .db_protests import import_protest_csv
+        _conn = db.get_conn()
+        _conn.autocommit = False
+        try:
+            import_protest_csv(
+                _conn, sys.argv[sys.argv.index("--import-protests") + 1])
         finally:
             _conn.close()
     elif "--link-oversight" in sys.argv:

@@ -403,6 +403,16 @@
       <p class="conf">No defensible expiration estimate — the linked awards carry
         no period-of-performance end dates.</p>
       {% endif %}
+      {% if fam.protests %}
+      <h3>Protest history — this solicitation family</h3>
+      <ul class="evlist">
+      {% for p in fam.protests %}
+        <li>{{ p.b_number }} — {{ p.protester or 'protester unknown' }}
+          <span class="conf">{{ (p.outcome or 'pending') | replace('_', ' ') }}
+          {% if p.filed_date %} · filed {{ p.filed_date }}{% endif %}</span></li>
+      {% endfor %}
+      </ul>
+      {% endif %}
       {% set vul = fam.vulnerability or {} %}
       <h3>Incumbent vulnerability — public signals only</h3>
       <p><strong>{{ vul.assessment }}</strong></p>

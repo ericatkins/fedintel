@@ -32,11 +32,11 @@ presented as shipped is its own kind of lie.
   prime awards at this buyer: no cross-buyer vendor search, no mentor-protégé
   or JV data, no vehicle-holder lookup. Size standing is inferred from
   set-aside award history, not SBA certification data — the panel says so.
-- **Incumbent vulnerability signals are a starter set** (bridge, set-aside
-  change, requirement-change language, obligation rate). Protest history and
-  exclusions are not ingested; GAO/IG findings now arrive via the oversight
-  import and power "why this requirement exists", but are not yet folded
-  into the vulnerability score.
+- **Incumbent vulnerability now folds in protests and open oversight
+  findings** alongside bridges, set-aside changes, requirement-change
+  language, and obligation rates. Still missing: exclusions/responsibility
+  data, and office-level protest-rate metrics for Buyer DNA (needs volume
+  protest data, not just family matches).
 - **Oversight signals are import-driven and inferred.** No live GAO API pull;
   findings arrive via provenance-enforced CSV, and links are labeled
   inferred context unless the notice cites the report number. Findings do
@@ -67,9 +67,12 @@ presented as shipped is its own kind of lie.
   payment collection is absent.
 - **Win probability is intentionally absent** until real outcomes exist to
   calibrate it (the decision stack is the honest substitute).
-- **Demo data**: `scripts/seed_demo.py` exercises every dossier section with
-  realistic shapes, but golden-set evaluation against live SAM.gov records
-  requires a `SAM_API_KEY` and has not been run inside this environment.
+- **The golden evaluation set is offline.** `python -m src.tools.run_eval`
+  gates releases on 12 hand-authored cases (26 checks) covering incumbent
+  tiers, work origin, vulnerability vocabulary, decision verdicts, and grant
+  eligibility — but document-extraction precision/recall and office
+  resolution against live SAM.gov records still require a `SAM_API_KEY` and
+  open network. See docs/INTELLIGENCE_EVALUATION.md.
 
 ## Operational
 

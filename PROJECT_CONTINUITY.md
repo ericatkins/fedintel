@@ -351,3 +351,26 @@ Migration 014:
 - Remaining next work: protest-history ingestion · oversight/forecast
   signals feeding decision-stack dimensions · grant match-feasibility ·
   golden-set evaluation against live SAM.gov (needs SAM_API_KEY + network).
+
+## Protest, vulnerability, and evaluation release (Aug 2026, fifth tranche)
+
+Migration 015:
+
+- **Protest history**: protest_records + provenance-enforced CSV import
+  (`--import-protests`, GAO B-numbers with decision URLs). Protests in an
+  opportunity's solicitation-number family become incumbent-vulnerability
+  signals (sustained/corrective-action weighted stronger), family timeline
+  entries, and a protest-history list on the dossier.
+- **Vulnerability integration**: build_dossier (v4) now accepts protests +
+  linked oversight findings; open GAO/IG findings appear as explicitly
+  inferred vulnerability signals. Enrichment links oversight findings inline
+  so fresh dossiers see them before the batch job runs.
+- **Golden evaluation harness**: src/tools/eval_cases.py (9 contract + 3
+  grant cases) + run_eval.py scorecard (release-blocking exit code) +
+  tests/test_golden_eval.py CI gate + docs/INTELLIGENCE_EVALUATION.md.
+  Authoring the set immediately caught two case-realism traps (office
+  identity needs fullParentPathName; thin descriptions under-score links) —
+  documented as case-authoring rules.
+- Remaining next work: live-record golden cases + adapter validation
+  (needs SAM_API_KEY + network) · office-level protest-rate metrics for
+  Buyer DNA · exclusions/responsibility signals · grant match-feasibility.

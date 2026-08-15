@@ -213,6 +213,36 @@ def run():
         # awards first so the dossier has history
         for a in DEMO_AWARDS:
             db_intel.upsert_award(cur, a)
+
+        # protest + oversight BEFORE enrichment so the dossier's vulnerability
+        # assessment sees them
+        from src.db_oversight import upsert_finding
+        from src.db_protests import upsert_protest
+        upsert_protest(cur, {
+            "source": "gao_docket", "source_record_id": "B-422917",
+            "protester": "ABC Systems, Inc.", "agency": "DEPT OF THE ARMY",
+            "solicitation_number": "W58RGZ-21-R-0042",
+            "filed_date": "2024-07-01", "decided_date": "2024-10-02",
+            "outcome": "denied",
+            "summary": "Challenge to the award of inventory management "
+                       "system support; GAO denied the protest.",
+            "source_url": "https://www.gao.gov/products/b-422917",
+            "raw_json": {"demo": True}})
+        upsert_finding(cur, {
+            "source": "gao", "source_record_id": "GAO-25-106230-R1",
+            "finding_type": "recommendation", "agency": "DEPT OF THE ARMY",
+            "subtier": None,
+            "title": "Army should modernize legacy inventory management "
+                     "systems to improve asset visibility",
+            "detail": "GAO found the Army's legacy inventory management "
+                      "applications limit asset visibility and recommended "
+                      "modernization with automated data migration and "
+                      "dashboards.",
+            "report_number": "GAO-25-106230", "published_date": "2025-11-18",
+            "status": "open",
+            "source_url": "https://www.gao.gov/products/gao-25-106230",
+            "raw_json": {"demo": True}})
+
         # earlier stage, then current stage (records the stage transition)
         for raw in (DEMO_EARLIER_STAGE, *DEMO_OPPS):
             opp = normalize_sam(raw)
@@ -240,8 +270,16 @@ def run():
                      "president_budget_amount": 2_900_000_000,
                      "source": "usaspending", "raw_json": {}},
                 ]
+                from src.db_protests import protests_for_solicitation_family
+                from src.enrich import _linked_oversight
+                protests = protests_for_solicitation_family(
+                    cur, "W58RGZ-21-R-0042")
+                oversight = _linked_oversight(
+                    cur, {**opp, "raw_json": raw})
                 dossier = build_dossier(opp, result, awards_office,
-                                        awards_subtier, [], budget_rows)
+                                        awards_subtier, [], budget_rows,
+                                        protests=protests,
+                                        oversight=oversight)
                 db_intel.save_dossier(cur, opp_id, office_id, dossier)
                 db_intel.mark_enrichment(cur, opp_id, "done")
         # subscription + per-org matches: the full multi-user workflow is visible
@@ -355,24 +393,6 @@ def run():
              "raw_json": {"demo": True}, "content_hash": "grdemo2"},
         ):
             upsert_grant(cur, g)
-
-        # oversight signal: an open GAO recommendation that plausibly explains
-        # the flagship requirement (linked as inferred context)
-        from src.db_oversight import upsert_finding
-        upsert_finding(cur, {
-            "source": "gao", "source_record_id": "GAO-25-106230-R1",
-            "finding_type": "recommendation", "agency": "DEPT OF THE ARMY",
-            "subtier": None,
-            "title": "Army should modernize legacy inventory management "
-                     "systems to improve asset visibility",
-            "detail": "GAO found the Army's legacy inventory management "
-                      "applications limit asset visibility and recommended "
-                      "modernization with automated data migration and "
-                      "dashboards.",
-            "report_number": "GAO-25-106230", "published_date": "2025-11-18",
-            "status": "open",
-            "source_url": "https://www.gao.gov/products/gao-25-106230",
-            "raw_json": {"demo": True}})
 
         # one open capture task so the watchlist tasks table is populated
         cur.execute("select count(*) from capture_tasks where organization_id=%s",
