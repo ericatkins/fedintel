@@ -1,8 +1,9 @@
 import { create } from 'zustand'
-import type { CameraMode, CityModel, Filters } from '../lib/types'
+import type { CameraMode, CityModel, Filters, RepoMeta } from '../lib/types'
 import { fetchAccount, fetchRepos } from '../lib/github'
 import { buildCity } from '../lib/layout'
 import { MOCK_ACCOUNT, MOCK_REPOS } from '../lib/mock'
+import { fetchActivityBatch, type ActivityProgress } from '../lib/activity'
 
 interface CityState {
   city: CityModel | null
@@ -14,6 +15,8 @@ interface CityState {
   cameraMode: CameraMode
   filters: Filters
   focusRequest: { x: number; z: number; nonce: number } | null
+  /** background commit-window sync progress; null when idle/complete */
+  activitySync: ActivityProgress | null
 
   loadMock: () => void
   loadGitHub: (login: string, token?: string) => Promise<void>
@@ -35,6 +38,7 @@ export const useCity = create<CityState>((set, get) => ({
   cameraMode: 'orbit',
   filters: { language: null, query: '', sortBy: 'importance' },
   focusRequest: null,
+  activitySync: null,
 
   loadMock: () => {
     set({
@@ -52,13 +56,18 @@ export const useCity = create<CityState>((set, get) => ({
       const account = await fetchAccount(login, { token })
       const repos = await fetchRepos(account.login, account.type, { token })
       if (repos.length === 0) throw new Error(`${account.login} has no visible repositories`)
+      const city = buildCity(account, repos)
       set({
-        city: buildCity(account, repos),
+        city,
         source: 'github',
         loading: false,
         selectedRepoId: null,
         filters: { language: null, query: '', sortBy: 'importance' },
       })
+      // background: enrich the most important repos with real commit windows,
+      // then rebuild so glow/busyness reflect actual commit traffic
+      const byImportance = city.repos.map(cr => cr.meta)
+      void enrichActivity(account.login, byImportance, token, set, get)
     } catch (e: any) {
       set({ loading: false, error: e?.message ?? 'failed to load GitHub data' })
     }
@@ -80,6 +89,34 @@ export const useCity = create<CityState>((set, get) => ({
   resetCamera: () =>
     set(s => ({ focusRequest: { x: 0, z: 0, nonce: (s.focusRequest?.nonce ?? 0) + 1 }, cameraMode: 'orbit' })),
 }))
+
+async function enrichActivity(
+  login: string,
+  orderedMetas: RepoMeta[],
+  token: string | undefined,
+  set: (partial: Partial<CityState>) => void,
+  get: () => CityState,
+) {
+  const stillCurrent = () => get().city?.account.login === login && get().source === 'github'
+  try {
+    const activity = await fetchActivityBatch(
+      orderedMetas,
+      token,
+      p => {
+        if (stillCurrent()) set({ activitySync: p.done < p.total ? p : null })
+      },
+    )
+    if (!stillCurrent() || activity.size === 0) {
+      if (stillCurrent()) set({ activitySync: null })
+      return
+    }
+    const enriched = orderedMetas.map(m => ({ ...m, activity: activity.get(m.id) ?? m.activity ?? null }))
+    const account = get().city!.account
+    set({ city: buildCity(account, enriched), activitySync: null })
+  } catch {
+    if (stillCurrent()) set({ activitySync: null })
+  }
+}
 
 /** Repos passing the active language/search filter; dimmed-out repos still render. */
 export function repoMatchesFilters(city: CityModel, filters: Filters, id: number): boolean {

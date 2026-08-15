@@ -31,6 +31,7 @@ Only high-level metadata from the GitHub REST listing endpoints is used:
 |---|---|
 | `GET /users/{login}` / `GET /orgs/{login}` | login, name, bio, avatar, type, followers, public repo count |
 | `GET /users/{login}/repos` / `GET /orgs/{login}/repos` | name, description, stars, forks, watchers, open issues, primary language, size (KB), pushed_at / updated_at / created_at, fork & archived flags, default branch |
+| `GET /repos/{o}/{r}/stats/participation` | 52 weekly commit **counts** for the default branch (numbers only — no messages, authors, or diffs) |
 
 No contents, trees, blobs, or code-search endpoints are ever called
 (`src/lib/github.ts` is the single API surface).
@@ -47,9 +48,11 @@ n(x) = log10(1 + x) / log10(1 + max_x_across_repos)
 | Score | Formula | Drives |
 |---|---|---|
 | **height** | `0.60·n(stars) + 0.40·n(forks)` | tower height (7–66 units) |
-| **glow** | `0.50·recent_push + 0.30·frequency + 0.20·recency` | window/trim/roof emissive intensity, point lights |
+| **glow** (synced) | `0.50·n(c30) + 0.30·n(c90) + 0.20·recency` | window/trim/roof emissive intensity, point lights |
+| **glow** (fallback) | `0.50·recent_push + 0.30·frequency + 0.20·recency` | same, from timestamps only |
 | **footprint** | `0.50·n(size_kb) + 0.25·n(watchers) + 0.25·n(stars)` | building base dimensions |
-| **busyness** | `0.40·recency + 0.30·n(watchers) + 0.30·n(open_issues)` | lit-window density, drone & light-trail density |
+| **busyness** (synced) | `0.40·n(c30) + 0.30·n(watchers) + 0.30·n(open_issues)` | lit-window density, drone & light-trail density |
+| **busyness** (fallback) | `0.40·recency + 0.30·n(watchers) + 0.30·n(open_issues)` | same |
 | **importance** | `0.45·height + 0.30·footprint + 0.25·glow` | parcel placement rank |
 
 Activity terms are derived from timestamps only:
@@ -59,6 +62,19 @@ Activity terms are derived from timestamps only:
 - `frequency = exp(-days_since_update / 60)`
 
 See `src/lib/scoring.ts` — every formula is documented at the definition.
+
+### Real commit windows (`src/lib/activity.ts`)
+
+After the city first renders from listing metadata, the app enriches the top
+30 repos by importance with **real commit-activity windows** in the
+background — `c7` / `c30` / `c90` = commits in the last 1 / 4 / 13 weeks from
+the participation endpoint. The HUD shows a "SYNCING COMMIT TRAFFIC n/m"
+indicator, then the city re-scores so glow and busyness reflect actual commit
+traffic. Rate-limit strategy: 6-hour localStorage cache per repo, concurrency
+of 5, brief retries while GitHub computes stats (HTTP 202), and any 403/429
+aborts the remainder — repos without synced windows keep the timestamp-proxy
+formulas. Synced data also powers the account-wide COMMIT PULSE sparkline,
+per-repo 7d/30d/90d stats, and real weekly bars on the hanging panels.
 
 ## City layout
 
@@ -100,6 +116,5 @@ the city is generated client-side from public metadata.
 - GitHub OAuth (server-side) for one-click sign-in and private-repo *metadata*
   for the signed-in owner; background re-sync + persistence (Postgres) so
   cities update as accounts change.
-- Contributor counts and 7d/30d/90d commit windows via additional metadata
-  endpoints (rate-limit aware, cached).
+- Contributor counts via additional metadata endpoints (rate-limit aware).
 - First-person walk mode, org district grouping, timeline replay.

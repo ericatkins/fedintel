@@ -1,5 +1,6 @@
 /** Demo data so the city renders instantly without hitting the GitHub API. */
 import type { AccountMeta, RepoMeta } from './types'
+import { windowsFromWeekly } from './activity'
 
 const now = Date.now()
 const daysAgo = (d: number) => new Date(now - d * 86_400_000).toISOString()
@@ -42,6 +43,17 @@ const MOCKS: M[] = [
   { name: 'playground', desc: 'Sandbox & experiments.', lang: 'HTML', stars: 54, forks: 6, watchers: 4, size: 600, issues: 1, pushedDaysAgo: 60 },
 ]
 
+/** Deterministic 52-week commit pattern: busier for recently pushed repos. */
+function mockWeekly(seed: number, pushedDaysAgo: number): number[] {
+  const base = Math.max(0.4, 16 - pushedDaysAgo / 4)
+  return Array.from({ length: 52 }, (_, i) => {
+    const wave = 0.55 + 0.45 * Math.sin(i / 2.6 + seed * 1.7)
+    const ramp = 0.35 + 0.65 * (i / 51) // busier toward the present
+    const quiet = pushedDaysAgo > 45 && i > 44 ? 0 : 1 // stale repos go quiet
+    return Math.round(base * wave * ramp * quiet)
+  })
+}
+
 export const MOCK_REPOS: RepoMeta[] = MOCKS.map((m, i) => ({
   id: 1000 + i,
   name: m.name,
@@ -61,4 +73,8 @@ export const MOCK_REPOS: RepoMeta[] = MOCKS.map((m, i) => ({
   isArchived: false,
   defaultBranch: 'main',
   htmlUrl: `https://github.com/${MOCK_ACCOUNT.login}/${m.name}`,
+  activity: (() => {
+    const weekly = mockWeekly(i, m.pushedDaysAgo)
+    return { weekly, ...windowsFromWeekly(weekly), fetchedAt: now }
+  })(),
 }))

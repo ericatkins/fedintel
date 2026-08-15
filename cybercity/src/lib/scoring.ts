@@ -13,8 +13,15 @@
  *   footprint = 0.50 * n(size_kb) + 0.25 * n(watchers) + 0.25 * n(stars)
  *   busyness  = 0.40 * recency + 0.30 * n(watchers) + 0.30 * n(open_issues)
  *
- * Activity terms are derived from pushed_at / updated_at timestamps only
- * (metadata — never commit contents):
+ * When real commit windows are synced (participation stats: weekly commit
+ * counts, still metadata only), activity-driven scores upgrade to:
+ *
+ *   glow     = 0.50 * n(c30) + 0.30 * n(c90) + 0.20 * recency
+ *   busyness = 0.40 * n(c30) + 0.30 * n(watchers) + 0.30 * n(open_issues)
+ *
+ * where c30/c90 are commits in the last 4/13 weeks. Repos without synced
+ * windows keep the timestamp-proxy formulas below, derived from
+ * pushed_at / updated_at only (metadata — never commit contents):
  *
  *   recency        = exp(-days_since_push / 30)      — half-life ~3 weeks
  *   recent_push    = 1 if pushed within 7d, 0.6 within 30d, 0.25 within 90d, else ~0
@@ -60,6 +67,8 @@ export function scoreRepos(repos: RepoMeta[], now = Date.now()): Map<number, Rep
   const maxWatchers = Math.max(...repos.map(r => r.watchers), 0)
   const maxSize = Math.max(...repos.map(r => r.sizeKb), 0)
   const maxIssues = Math.max(...repos.map(r => r.openIssues), 0)
+  const maxC30 = Math.max(...repos.map(r => r.activity?.c30 ?? 0), 0)
+  const maxC90 = Math.max(...repos.map(r => r.activity?.c90 ?? 0), 0)
 
   const out = new Map<number, RepoScores>()
   const scored = repos.map(r => {
@@ -74,12 +83,23 @@ export function scoreRepos(repos: RepoMeta[], now = Date.now()): Map<number, Rep
     const recency = recencyScore(dPush)
 
     const height = 0.6 * nStars + 0.4 * nForks
-    const glow = 0.5 * recentPushScore(dPush) + 0.3 * frequencyProxy(dUpdate) + 0.2 * recency
     const footprint = 0.5 * nSize + 0.25 * nWatchers + 0.25 * nStars
-    const busyness = 0.4 * recency + 0.3 * nWatchers + 0.3 * nIssues
+
+    const fromRealActivity = !!r.activity && maxC90 > 0
+    let glow: number
+    let busyness: number
+    if (fromRealActivity) {
+      const nC30 = logNorm(r.activity!.c30, maxC30)
+      const nC90 = logNorm(r.activity!.c90, maxC90)
+      glow = 0.5 * nC30 + 0.3 * nC90 + 0.2 * recency
+      busyness = 0.4 * nC30 + 0.3 * nWatchers + 0.3 * nIssues
+    } else {
+      glow = 0.5 * recentPushScore(dPush) + 0.3 * frequencyProxy(dUpdate) + 0.2 * recency
+      busyness = 0.4 * recency + 0.3 * nWatchers + 0.3 * nIssues
+    }
     const importance = 0.45 * height + 0.3 * footprint + 0.25 * glow
 
-    return { id: r.id, s: { height, glow, footprint, busyness, importance, rank: 0 } }
+    return { id: r.id, s: { height, glow, footprint, busyness, importance, rank: 0, fromRealActivity } }
   })
 
   scored

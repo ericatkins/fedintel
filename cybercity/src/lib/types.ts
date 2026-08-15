@@ -6,6 +6,19 @@
  * GitHub REST API's repo/user listing endpoints.
  */
 
+/** Real commit-activity windows derived from weekly participation counts. */
+export interface RepoActivity {
+  /** last 52 weeks of commit counts, oldest first (numbers only) */
+  weekly: number[]
+  /** commits in the last 7 days (1 week) */
+  c7: number
+  /** commits in the last ~30 days (4 weeks) */
+  c30: number
+  /** commits in the last ~90 days (13 weeks) */
+  c90: number
+  fetchedAt: number
+}
+
 export interface RepoMeta {
   id: number
   name: string
@@ -26,6 +39,8 @@ export interface RepoMeta {
   isArchived: boolean
   defaultBranch: string
   htmlUrl: string
+  /** real commit windows when synced; null/undefined → timestamp proxies */
+  activity?: RepoActivity | null
 }
 
 export interface AccountMeta {
@@ -45,8 +60,13 @@ export interface AccountMeta {
 export interface RepoScores {
   /** height_score = 0.6 * n(stars) + 0.4 * n(forks) */
   height: number
-  /** glow_score = 0.5 * n(recent_push) + 0.3 * n(frequency proxy) + 0.2 * recency decay */
+  /**
+   * With real activity: 0.5 * n(c30) + 0.3 * n(c90) + 0.2 * recency.
+   * Fallback: 0.5 * n(recent_push) + 0.3 * n(frequency proxy) + 0.2 * recency.
+   */
   glow: number
+  /** true when glow/busyness came from real commit windows */
+  fromRealActivity: boolean
   /** footprint_score = 0.5 * n(size) + 0.25 * n(watchers) + 0.25 * n(stars) */
   footprint: number
   /** busyness_score = 0.4 * recency + 0.3 * n(watchers) + 0.3 * n(open issues) */

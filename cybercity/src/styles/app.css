@@ -92,6 +92,24 @@ html, body, #root {
 .hud-feed-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hud-feed-time { color: var(--dim); font-size: 10px; }
 
+.hud-sync {
+  color: var(--cyan); font-size: 10px; letter-spacing: 1px; margin-top: 8px;
+  text-shadow: 0 0 8px rgba(103, 232, 249, 0.7); animation: syncblink 1.4s ease-in-out infinite;
+}
+@keyframes syncblink { 50% { opacity: 0.45; } }
+
+.hud-pulse, .sparkline {
+  display: flex; align-items: flex-end; gap: 2px; height: 34px;
+}
+.hud-pulse span {
+  flex: 1; background: linear-gradient(180deg, var(--magenta), var(--purple));
+  border-radius: 1px; box-shadow: 0 0 4px rgba(232, 121, 249, 0.5); min-height: 2px;
+}
+.sparkline { margin-top: 10px; height: 30px; }
+.sparkline span { flex: 1; border-radius: 1px; min-height: 2px; }
+
+.repo-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+
 /* legend / status */
 .legend-row { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 10px; letter-spacing: 1px; padding: 3px 0; }
 .legend-row i { width: 18px; height: 3px; border-radius: 2px; box-shadow: 0 0 6px currentColor; }

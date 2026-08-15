@@ -16,9 +16,22 @@ function timeAgo(iso: string | null): string {
 
 /** Top-left account HUD — identity, totals, language mix, recent activity feed. */
 export default function HUD({ city }: { city: CityModel }) {
-  const { focusRepo } = useCity()
+  const { focusRepo, activitySync } = useCity()
   const a = city.account
   const t = city.totals
+
+  const withActivity = city.repos.filter(r => r.meta.activity)
+  const commits30 = withActivity.reduce((s, r) => s + r.meta.activity!.c30, 0)
+  const commits90 = withActivity.reduce((s, r) => s + r.meta.activity!.c90, 0)
+  // account-wide weekly rollup for the contribution sparkline
+  const rollup = useMemo(() => {
+    if (withActivity.length === 0) return null
+    const weeks = new Array(26).fill(0)
+    for (const r of withActivity) {
+      r.meta.activity!.weekly.slice(-26).forEach((c, i) => (weeks[i] += c))
+    }
+    return weeks as number[]
+  }, [city])
 
   const recent = useMemo(
     () =>
@@ -55,7 +68,28 @@ export default function HUD({ city }: { city: CityModel }) {
         <Stat label="TOTAL FORKS" value={compact(t.forks)} />
         <Stat label="WATCHERS" value={compact(t.watchers)} />
         <Stat label="ACTIVE 30D" value={String(t.recentlyActive)} />
+        {withActivity.length > 0 && <Stat label="COMMITS 30D" value={compact(commits30)} />}
+        {withActivity.length > 0 && <Stat label="COMMITS 90D" value={compact(commits90)} />}
       </div>
+
+      {activitySync && (
+        <div className="hud-sync">
+          ⟳ SYNCING COMMIT TRAFFIC {activitySync.done}/{activitySync.total}
+          {activitySync.rateLimited ? ' · RATE LIMITED' : ''}
+        </div>
+      )}
+
+      {rollup && (
+        <>
+          <div className="hud-section">COMMIT PULSE · 26W</div>
+          <div className="hud-pulse">
+            {rollup.map((c, i) => {
+              const max = Math.max(...rollup, 1)
+              return <span key={i} style={{ height: `${6 + (c / max) * 94}%` }} />
+            })}
+          </div>
+        </>
+      )}
 
       <div className="hud-section">LANGUAGE MIX</div>
       <div className="hud-langbar">

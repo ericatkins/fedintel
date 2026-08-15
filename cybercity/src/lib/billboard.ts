@@ -122,30 +122,56 @@ export function makeCommitPanelTexture(repo: CityRepo): THREE.CanvasTexture {
   ctx.font = '600 30px "Courier New", monospace'
   ctx.fillText('COMMIT TRAFFIC', 32, 56)
 
+  const act = repo.meta.activity
   const days = repo.meta.pushedAt ? Math.round((Date.now() - Date.parse(repo.meta.pushedAt)) / 86_400_000) : null
   ctx.fillStyle = '#f5f3ff'
   ctx.font = '400 30px "Courier New", monospace'
-  ctx.fillText(days === null ? 'no data' : days <= 0 ? 'pushed today' : `pushed ${days}d ago`, 32, 104)
+  ctx.fillText(
+    act
+      ? `+${compact(act.c30)} commits / 30d`
+      : days === null ? 'no data' : days <= 0 ? 'pushed today' : `pushed ${days}d ago`,
+    32, 104,
+  )
 
-  // synthetic-but-deterministic activity pulse from glow/busyness
-  ctx.strokeStyle = accent
-  ctx.lineWidth = 3
-  ctx.shadowColor = accent
-  ctx.shadowBlur = 10
-  ctx.beginPath()
-  const amp = 14 + repo.scores.glow * 34
-  for (let x = 0; x <= W - 64; x += 4) {
-    const t = x / (W - 64)
-    const yy = 176 - Math.sin(t * Math.PI * (2 + repo.scores.busyness * 6) + repo.meta.id) * amp * (0.4 + 0.6 * Math.sin(t * Math.PI))
-    if (x === 0) ctx.moveTo(32 + x, yy)
-    else ctx.lineTo(32 + x, yy)
+  if (act) {
+    // real weekly commit bars — last 16 weeks
+    const weeks = act.weekly.slice(-16)
+    const maxW = Math.max(...weeks, 1)
+    const bw = (W - 64) / weeks.length
+    ctx.shadowColor = accent
+    ctx.shadowBlur = 8
+    weeks.forEach((c, i) => {
+      const bh = 4 + (c / maxW) * 60
+      ctx.fillStyle = i >= weeks.length - 4 ? accent : 'rgba(139, 132, 184, 0.55)'
+      ctx.fillRect(32 + i * bw + 2, 192 - bh, bw - 5, bh)
+    })
+    ctx.shadowBlur = 0
+  } else {
+    // synthetic-but-deterministic activity pulse from glow/busyness
+    ctx.strokeStyle = accent
+    ctx.lineWidth = 3
+    ctx.shadowColor = accent
+    ctx.shadowBlur = 10
+    ctx.beginPath()
+    const amp = 14 + repo.scores.glow * 34
+    for (let x = 0; x <= W - 64; x += 4) {
+      const t = x / (W - 64)
+      const yy = 176 - Math.sin(t * Math.PI * (2 + repo.scores.busyness * 6) + repo.meta.id) * amp * (0.4 + 0.6 * Math.sin(t * Math.PI))
+      if (x === 0) ctx.moveTo(32 + x, yy)
+      else ctx.lineTo(32 + x, yy)
+    }
+    ctx.stroke()
+    ctx.shadowBlur = 0
   }
-  ctx.stroke()
-  ctx.shadowBlur = 0
 
   ctx.fillStyle = THEME.textDim
   ctx.font = '400 26px "Courier New", monospace'
-  ctx.fillText(`issues ${repo.meta.openIssues} · watch ${repo.meta.watchers}`, 32, 232)
+  ctx.fillText(
+    act
+      ? `7d ${act.c7} · 90d ${compact(act.c90)} · issues ${repo.meta.openIssues}`
+      : `issues ${repo.meta.openIssues} · watch ${repo.meta.watchers}`,
+    32, 232,
+  )
 
   const tex = new THREE.CanvasTexture(canvas)
   tex.colorSpace = THREE.SRGBColorSpace

@@ -29,6 +29,18 @@ export default function RepoPanel({ city }: { city: CityModel }) {
         <div><span>LAST PUSH</span><b>{dPush < 1 ? 'today' : `${Math.round(dPush)}d ago`}</b></div>
       </div>
 
+      {m.activity && (
+        <>
+          <div className="repo-section">COMMIT TRAFFIC</div>
+          <div className="repo-grid repo-grid-3">
+            <div><span>7 DAYS</span><b>{compact(m.activity.c7)}</b></div>
+            <div><span>30 DAYS</span><b>{compact(m.activity.c30)}</b></div>
+            <div><span>90 DAYS</span><b>{compact(m.activity.c90)}</b></div>
+          </div>
+          <Sparkline weekly={m.activity.weekly} color={repo.accentColor} />
+        </>
+      )}
+
       <div className="repo-section">CITY ENCODING</div>
       <ScoreBar label="HEIGHT · stars+forks" value={s.height} color="#a855f7" />
       <ScoreBar label="GLOW · recent activity" value={s.glow} color="#22d3ee" />
@@ -43,6 +55,24 @@ export default function RepoPanel({ city }: { city: CityModel }) {
       <a className="repo-link" href={m.htmlUrl} target="_blank" rel="noreferrer">
         OPEN ON GITHUB ↗
       </a>
+    </div>
+  )
+}
+
+function Sparkline({ weekly, color }: { weekly: number[]; color: string }) {
+  const weeks = weekly.slice(-26)
+  const max = Math.max(...weeks, 1)
+  return (
+    <div className="sparkline" title="weekly commits, last 26 weeks">
+      {weeks.map((c, i) => (
+        <span
+          key={i}
+          style={{
+            height: `${8 + (c / max) * 92}%`,
+            background: i >= weeks.length - 4 ? color : 'rgba(139, 132, 184, 0.45)',
+          }}
+        />
+      ))}
     </div>
   )
 }
