@@ -55,7 +55,7 @@ export default function ConnectScreen() {
 
         {error && <div className="connect-error">⚠ {error}</div>}
 
-        <button className="connect-demo" onClick={loadMock}>
+        <button className="connect-demo" onClick={() => loadMock()}>
           or explore the demo city
         </button>
 

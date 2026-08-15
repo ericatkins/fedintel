@@ -92,6 +92,20 @@ export default function CityScene({ city }: { city: CityModel }) {
 
   const anyFilter = !!filters.language || !!filters.query
 
+  // point-light budget: WebGL forward lighting gets expensive fast, so only
+  // the brightest towers carry a real light — the rest glow via emissive+bloom
+  const litIds = useMemo(
+    () =>
+      new Set(
+        [...city.repos]
+          .sort((a, b) => b.scores.glow - a.scores.glow)
+          .slice(0, 12)
+          .filter(r => r.scores.glow > 0.55)
+          .map(r => r.meta.id),
+      ),
+    [city],
+  )
+
   return (
     <Canvas
       shadows={false}
@@ -122,6 +136,7 @@ export default function CityScene({ city }: { city: CityModel }) {
           dimmed={anyFilter && !repoMatchesFilters(city, filters, repo.meta.id)}
           isLandmark={repo.meta.id === landmarkId}
           accountName={city.account.login}
+          lit={litIds.has(repo.meta.id)}
         />
       ))}
 

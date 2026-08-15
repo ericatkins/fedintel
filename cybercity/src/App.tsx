@@ -13,8 +13,9 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const user = params.get('user') ?? params.get('org')
+    const demo = params.get('demo')
     if (user) loadGitHub(user)
-    else if (params.get('demo') !== null) loadMock()
+    else if (demo !== null) loadMock(demo === 'big' ? 120 : Number(demo) || undefined)
   }, [loadGitHub, loadMock])
 
   if (!city) return <ConnectScreen />

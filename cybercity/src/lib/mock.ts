@@ -54,6 +54,60 @@ function mockWeekly(seed: number, pushedDaysAgo: number): number[] {
   })
 }
 
+/** Synthetic large account for scale testing: `?demo=big` → N repos. */
+export function makeBigMock(count: number): { account: AccountMeta; repos: RepoMeta[] } {
+  const langs = ['TypeScript', 'Python', 'Go', 'Rust', 'C++', 'JavaScript', 'Ruby', 'Java', 'Shell', 'Dart']
+  const nouns = ['engine', 'api', 'kit', 'flow', 'core', 'hub', 'lab', 'grid', 'forge', 'nexus', 'pulse', 'stack']
+  const adjs = ['aurora', 'nova', 'quantum', 'hyper', 'neon', 'cyber', 'astro', 'flux', 'zero', 'omega', 'delta', 'vertex']
+  const repos: RepoMeta[] = Array.from({ length: count }, (_, i) => {
+    const r = (n: number) => {
+      // deterministic hash-ish stream per repo index
+      let x = ((i + 1) * 2654435761 + n * 40503) >>> 0
+      x = Math.imul(x ^ (x >>> 15), 2246822519) >>> 0
+      return ((x ^ (x >>> 13)) >>> 0) / 0xffffffff
+    }
+    const pushedDaysAgo = Math.pow(r(1), 2) * 400
+    const stars = Math.round(Math.pow(r(2), 3) * 5000)
+    const weekly = mockWeekly(i, pushedDaysAgo)
+    return {
+      id: 5000 + i,
+      name: `${adjs[i % adjs.length]}-${nouns[(i * 7) % nouns.length]}${i >= 144 ? `-${i}` : i >= 24 ? `-${Math.floor(i / 24)}` : ''}`,
+      fullName: `mega_org/repo${i}`,
+      owner: 'mega_org',
+      description: 'Synthetic scale-test repository.',
+      stars,
+      forks: Math.round(stars * (0.1 + r(3) * 0.2)),
+      watchers: Math.round(stars * 0.08),
+      openIssues: Math.round(r(4) * 80),
+      language: langs[(i * 3) % langs.length],
+      sizeKb: Math.round(Math.pow(r(5), 2) * 60000),
+      pushedAt: daysAgo(pushedDaysAgo),
+      updatedAt: daysAgo(pushedDaysAgo),
+      createdAt: daysAgo(500 + r(6) * 1500),
+      isFork: false,
+      isArchived: r(7) > 0.92,
+      defaultBranch: 'main',
+      htmlUrl: 'https://github.com',
+      activity: { weekly, ...windowsFromWeekly(weekly), fetchedAt: now },
+    }
+  })
+  return {
+    account: {
+      login: 'mega_org',
+      name: 'Mega Org',
+      bio: `Scale test district — ${count} repositories.`,
+      avatarUrl: null,
+      type: 'Organization',
+      followers: 12800,
+      following: 0,
+      publicRepos: count,
+      htmlUrl: 'https://github.com',
+      createdAt: daysAgo(3000),
+    },
+    repos,
+  }
+}
+
 export const MOCK_REPOS: RepoMeta[] = MOCKS.map((m, i) => ({
   id: 1000 + i,
   name: m.name,

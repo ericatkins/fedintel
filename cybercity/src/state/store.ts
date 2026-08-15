@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { CameraMode, CityModel, Filters, RepoMeta } from '../lib/types'
 import { fetchAccount, fetchRepos } from '../lib/github'
 import { buildCity } from '../lib/layout'
-import { MOCK_ACCOUNT, MOCK_REPOS } from '../lib/mock'
+import { MOCK_ACCOUNT, MOCK_REPOS, makeBigMock } from '../lib/mock'
 import { fetchActivityBatch, type ActivityProgress } from '../lib/activity'
 
 interface CityState {
@@ -18,7 +18,7 @@ interface CityState {
   /** background commit-window sync progress; null when idle/complete */
   activitySync: ActivityProgress | null
 
-  loadMock: () => void
+  loadMock: (size?: number) => void
   loadGitHub: (login: string, token?: string) => Promise<void>
   select: (id: number | null) => void
   hover: (id: number | null) => void
@@ -40,9 +40,10 @@ export const useCity = create<CityState>((set, get) => ({
   focusRequest: null,
   activitySync: null,
 
-  loadMock: () => {
+  loadMock: (size?: number) => {
+    const data = size && size > 0 ? makeBigMock(size) : { account: MOCK_ACCOUNT, repos: MOCK_REPOS }
     set({
-      city: buildCity(MOCK_ACCOUNT, MOCK_REPOS),
+      city: buildCity(data.account, data.repos),
       source: 'mock',
       error: null,
       selectedRepoId: null,

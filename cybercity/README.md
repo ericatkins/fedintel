@@ -18,6 +18,10 @@ npm run dev        # http://localhost:5173
 
 - Enter any public GitHub username or organization to generate its city, or
   click **"explore the demo city"** for instant mock data.
+- Scale testing: `?demo=big` renders a synthetic 120-repo org city
+  (`?demo=200` etc. for any size). Point lights are budgeted to the 12
+  brightest towers, street lamps are instanced, and filter fades only run
+  while transitioning, so large cities stay draw-call-friendly.
 - Shareable URLs: `?user=<login>` (or `?demo`) generates a city on load, so a
   city can be linked publicly. The **⧉ SHARE CITY** button copies that link.
 - An optional personal access token raises GitHub rate limits (60 → 5000

@@ -11,9 +11,11 @@ interface Props {
   dimmed: boolean
   isLandmark: boolean
   accountName: string
+  /** granted a real point light by the scene's light budget */
+  lit: boolean
 }
 
-export default function Building({ repo, dimmed, isLandmark, accountName }: Props) {
+export default function Building({ repo, dimmed, isLandmark, accountName, lit }: Props) {
   const { select, hover, hoveredRepoId, selectedRepoId } = useCity()
   const hovered = hoveredRepoId === repo.meta.id
   const selected = selectedRepoId === repo.meta.id
@@ -42,24 +44,28 @@ export default function Building({ repo, dimmed, isLandmark, accountName }: Prop
       emissiveIntensity: 0.5 + glow * 0.9,
       roughness: 0.55,
       metalness: 0.35,
+      transparent: true, // fadeable when filtered out
     })
     return mat
   }, [windowTex, repo.accentColor, glow])
 
   const edgeColor = useMemo(() => new THREE.Color(repo.accentColor), [repo.accentColor])
 
-  // gentle float on the hanging commit panel; pulse the trim when active
+  // gentle float on the hanging commit panel; fade traversal only runs while
+  // a filter transition is in progress (not every frame for every building)
+  const fadeValue = useRef(1)
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
     if (panelRef.current) {
       panelRef.current.position.y = h * 0.45 + Math.sin(t * 0.8 + rnd * 10) * 0.6
     }
-    if (groupRef.current) {
-      const target = dimmed ? 0.25 : 1
+    const target = dimmed ? 0.25 : 1
+    if (groupRef.current && Math.abs(target - fadeValue.current) > 0.005) {
+      fadeValue.current += (target - fadeValue.current) * 0.12
       groupRef.current.traverse(obj => {
         const m = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined
         if (m && 'opacity' in m && (obj as any).userData.fadeable) {
-          m.opacity += (target - m.opacity) * 0.12
+          m.opacity = fadeValue.current
         }
       })
     }
@@ -167,8 +173,8 @@ export default function Building({ repo, dimmed, isLandmark, accountName }: Prop
         </mesh>
       )}
 
-      {/* activity point light for busy repos */}
-      {glow > 0.55 && !dimmed && (
+      {/* activity point light for busy repos (scene-budgeted) */}
+      {lit && !dimmed && (
         <pointLight position={[0, h * 0.7, 0]} color={repo.accentColor} intensity={trimIntensity * 6} distance={w * 4} decay={2} />
       )}
     </group>

@@ -72,19 +72,46 @@ export default function Ground({ city }: { city: CityModel }) {
         <lineBasicMaterial color={THEME.streetLine} transparent opacity={0.8} />
       </lineSegments>
 
-      {/* intersection street lamps */}
-      {lampPositions.map(([x, z], i) => (
-        <group key={`lamp${i}`} position={[x, 0, z]}>
-          <mesh position={[0, 2.2, 0]}>
-            <cylinderGeometry args={[0.09, 0.14, 4.4, 5]} />
-            <meshStandardMaterial color="#171130" roughness={0.6} />
-          </mesh>
-          <mesh position={[0, 4.5, 0]}>
-            <sphereGeometry args={[0.32, 8, 8]} />
-            <meshBasicMaterial color={i % 3 === 0 ? THEME.neonCyan : THEME.neonPurple} toneMapped={false} />
-          </mesh>
-        </group>
-      ))}
+      {/* intersection street lamps — instanced: 2 draw calls total */}
+      <Lamps positions={lampPositions} />
+    </group>
+  )
+}
+
+function Lamps({ positions }: { positions: Array<[number, number]> }) {
+  const postRef = (mesh: THREE.InstancedMesh | null) => {
+    if (!mesh) return
+    const dummy = new THREE.Object3D()
+    positions.forEach(([x, z], i) => {
+      dummy.position.set(x, 2.2, z)
+      dummy.updateMatrix()
+      mesh.setMatrixAt(i, dummy.matrix)
+    })
+    mesh.instanceMatrix.needsUpdate = true
+  }
+  const bulbRef = (mesh: THREE.InstancedMesh | null) => {
+    if (!mesh) return
+    const dummy = new THREE.Object3D()
+    const color = new THREE.Color()
+    positions.forEach(([x, z], i) => {
+      dummy.position.set(x, 4.5, z)
+      dummy.updateMatrix()
+      mesh.setMatrixAt(i, dummy.matrix)
+      mesh.setColorAt(i, color.set(i % 3 === 0 ? THEME.neonCyan : THEME.neonPurple))
+    })
+    mesh.instanceMatrix.needsUpdate = true
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+  }
+  return (
+    <group>
+      <instancedMesh ref={postRef} args={[undefined, undefined, positions.length]}>
+        <cylinderGeometry args={[0.09, 0.14, 4.4, 5]} />
+        <meshStandardMaterial color="#171130" roughness={0.6} />
+      </instancedMesh>
+      <instancedMesh ref={bulbRef} args={[undefined, undefined, positions.length]}>
+        <sphereGeometry args={[0.32, 8, 8]} />
+        <meshBasicMaterial toneMapped={false} />
+      </instancedMesh>
     </group>
   )
 }
